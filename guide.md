@@ -2,7 +2,7 @@
 - Donor
 - Patient 
 - Hospital/blood bank
-- Admin (If possible) -> view all users and blood requests
+- Admin -> view all users and blood requests
 
 ## Features : 
 ### about user authentication : 
@@ -36,10 +36,5 @@
 
 ## Flow :
 
-### Donor :
+need blood (patient) -> request to (Admin) -> Admin search the blood from hospital data -> (Admin) if found : give to patient (notification to patient : found it!), else : contact donor, (notification to patient : donor found !) and (notification to donor : come to hospital, and donate blood)
 
-### Patient : 
-
-### Hospital/Blood bank :
-
-### Admin (If possible) -> view all users and blood requests
