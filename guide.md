@@ -79,3 +79,8 @@ need blood (patient) -> (Patient) request to Admin and fill the form -> Admin se
 - Registration ID (optional)
 - Contact Person Name
 
+## Login details for all : 
+- Role
+- Email
+- Password
+
