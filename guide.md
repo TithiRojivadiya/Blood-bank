@@ -1,3 +1,19 @@
+## Technology : 
+
+### Frontend : 
+- React Js (vite)
+- Tailwind CSS
+
+#### Library : 
+- React router
+
+### Database : 
+- MySQL
+
+### Backend :
+- Node Js
+- Express Js
+
 ## Users :
 - Donor
 - Patient 
