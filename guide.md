@@ -5,7 +5,7 @@
 - Tailwind CSS
 
 #### Library : 
-- React router
+- react-router
 
 ### Database : 
 - MySQL
@@ -66,14 +66,14 @@ need blood (patient) -> (Patient) request to Admin and fill the form -> Admin se
 ### Patient : 
 - Full Name
 - Email
-- Phone Number
+- Phone Number ( First digit must be 6, 7, 8, or 9)
 - Password
 - City / Area
 
 ### Donor :
 - Full Name
 - Email
-- Phone Number
+- Phone Number (( First digit must be 6, 7, 8, or 9))
 - Password
 - Blood Group
 - City / Area
@@ -89,7 +89,7 @@ need blood (patient) -> (Patient) request to Admin and fill the form -> Admin se
 ### Hospital / Blood bank :
 - Hospital / Blood Bank Name
 - Email
-- Phone Number
+- Phone Number (First digit must be 6, 7, 8, or 9)
 - Password
 - City / Area
 - Registration ID (optional)
