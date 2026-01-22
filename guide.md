@@ -33,6 +33,9 @@
 - Hospital/Blood Bank Directory
 - Contact Us & Support
 
+### AI feature
+- AI generates polite emergency messages to donors automatically.
+
 
 ## Flow :
 
