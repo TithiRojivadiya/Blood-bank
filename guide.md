@@ -36,8 +36,46 @@
 ### AI feature
 - AI generates polite emergency messages to donors automatically.
 
+### Optional
+- OTP while login
+- Forgot password
+
 
 ## Flow :
+need blood (patient) -> (Patient) request to Admin and fill the form -> Admin search the blood from hospital data (notify them) -> (Admin) if found : give to patient (notification to patient : found it!), else : contact donor, (notification to patient : donor found !) and (notification to donor : come to hospital, and donate blood)
 
-need blood (patient) -> (Patient) request to Admin and fill the form -> Admin search the blood from hospital data -> (Admin) if found : give to patient (notification to patient : found it!), else : contact donor, (notification to patient : donor found !) and (notification to donor : come to hospital, and donate blood)
+
+## Sign Up info needed to take from user role wise : 
+
+### Patient : 
+- Full Name
+- Email
+- Phone Number
+- Password
+- City / Area
+
+### Donor :
+- Full Name
+- Email
+- Phone Number
+- Password
+- Blood Group
+- City / Area
+- Age
+- Last Blood Donation Date (optional)
+- Availability Status (default: Available) (Toggle button : Available / Not Available)
+
+### Admin : 
+- Admin Name
+- Email
+- Password
+
+### Hospital / Blood bank :
+- Hospital / Blood Bank Name
+- Email
+- Phone Number
+- Password
+- City / Area
+- Registration ID (optional)
+- Contact Person Name
 
