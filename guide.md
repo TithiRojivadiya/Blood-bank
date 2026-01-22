@@ -36,5 +36,5 @@
 
 ## Flow :
 
-need blood (patient) -> request to (Admin) -> Admin search the blood from hospital data -> (Admin) if found : give to patient (notification to patient : found it!), else : contact donor, (notification to patient : donor found !) and (notification to donor : come to hospital, and donate blood)
+need blood (patient) -> (Patient) request to Admin and fill the form -> Admin search the blood from hospital data -> (Admin) if found : give to patient (notification to patient : found it!), else : contact donor, (notification to patient : donor found !) and (notification to donor : come to hospital, and donate blood)
 
