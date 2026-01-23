@@ -54,11 +54,19 @@ const Login = () => {
     // Simulated login success
     alert("Login successful!");
 
-    // Role-based UI redirect (mock)
-    if (formData.role === "ADMIN") navigate("/admin-dashboard");
-    if (formData.role === "DONOR") navigate("/donor-dashboard");
-    if (formData.role === "PATIENT") navigate("/patient-dashboard");
-    if (formData.role === "HOSPITAL") navigate("/hospital-dashboard");
+    // ... inside handleSubmit
+const handleSubmit = (e) => {
+  e.preventDefault();
+  if (!isValid) return;
+
+  alert("Login successful!");
+
+  // Updated to match folder-based routing
+  if (formData.role === "ADMIN") navigate("/admin/dashboard");
+  if (formData.role === "DONOR") navigate("/donor/dashboard");
+  if (formData.role === "PATIENT") navigate("/patient/dashboard");
+  if (formData.role === "HOSPITAL") navigate("/blood-bank/dashboard");
+};
   };
 
   return (
