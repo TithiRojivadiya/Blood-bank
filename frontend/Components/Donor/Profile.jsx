@@ -22,7 +22,6 @@ const Profile = () => {
   };
 
   const toggleAvailability = () => {
-    if (!isEditing) return;
     setProfileData({
       ...profileData,
       availability:
@@ -31,6 +30,7 @@ const Profile = () => {
           : "Available"
     });
   };
+
 
   const handleSave = () => {
     alert("✅ Profile updated successfully!");
@@ -122,29 +122,40 @@ const Profile = () => {
         />
 
         {/* Availability Toggle */}
+        {/* Availability Toggle */}
         <label style={styles.label}>Availability Status</label>
-        <div
-          style={{
-            ...styles.toggle,
-            backgroundColor:
-              profileData.availability === "Available"
-                ? "#c8e6c9"
-                : "#ffcdd2"
-          }}
-          onClick={toggleAvailability}
-        >
-          <span
+
+        <div style={styles.switch} onClick={toggleAvailability}>
+          <div
             style={{
-              ...styles.toggleText,
-              color:
+              ...styles.slider,
+              transform:
+                profileData.availability === "Available"
+                  ? "translateX(26px)"
+                  : "translateX(0px)",
+              backgroundColor:
                 profileData.availability === "Available"
                   ? "#2e7d32"
                   : "#c62828"
             }}
-          >
-            {profileData.availability}
-          </span>
+          />
         </div>
+
+        <p
+          style={{
+            textAlign: "center",
+            fontSize: "13px",
+            fontWeight: "600",
+            color:
+              profileData.availability === "Available"
+                ? "#2e7d32"
+                : "#c62828",
+            marginBottom: "22px"
+          }}
+        >
+          {profileData.availability}
+        </p>
+
 
         {/* Buttons */}
         {!isEditing ? (
@@ -231,7 +242,27 @@ const styles = {
     borderRadius: "14px",
     fontSize: "15px",
     cursor: "pointer"
-  }
+  },
+  switch: {
+    width: "56px",
+    height: "30px",
+    backgroundColor: "#eee",
+    borderRadius: "30px",
+    position: "relative",
+    cursor: "pointer",
+    marginBottom: "8px"
+  },
+
+  slider: {
+    width: "24px",
+    height: "24px",
+    borderRadius: "50%",
+    position: "absolute",
+    top: "3px",
+    left: "3px",
+    transition: "0.3s ease"
+  },
+
 };
 
 export default Profile;

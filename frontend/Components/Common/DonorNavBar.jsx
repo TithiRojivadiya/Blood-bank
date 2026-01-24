@@ -21,7 +21,7 @@ const DonorNavBar = () => {
 
         <div className="flex gap-3">
           <NavLink to="dashboard" className={navClass}>Dashboard</NavLink>
-          <NavLink to="notification" className={navClass}>Notifications</NavLink>
+          <NavLink to="notification" className={navClass}>🔔 Notifications</NavLink>
           <NavLink to="profile" className={navClass}>Profile</NavLink>
         </div>
 
