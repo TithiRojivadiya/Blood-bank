@@ -23,7 +23,7 @@ const AdminNavBar = () => {
 
         <div className="flex gap-3 font-medium">
           <NavLink to="dashboard" className={navClass}>Dashboard</NavLink>
-          <NavLink to="notification" className={navClass}>Notifications</NavLink>
+          <NavLink to="notification" className={navClass}>🔔 Notifications</NavLink>
           <NavLink to="donors" className={navClass}>Donors</NavLink>
           <NavLink to="users" className={navClass}>Users</NavLink>
           <NavLink to="hospitals" className={navClass}>Hospitals</NavLink>

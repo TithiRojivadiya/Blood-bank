@@ -22,7 +22,7 @@ const PatientNavBar = () => {
         <div className="flex gap-3">
           <NavLink to="dashboard" className={navClass}>Dashboard</NavLink>
           <NavLink to="profile" className={navClass}>Profile</NavLink>
-          <NavLink to="notification" className={navClass}>Notifications</NavLink>
+          <NavLink to="notification" className={navClass}>🔔 Notifications</NavLink>
           <NavLink to="request" className={navClass}>Request</NavLink>
         </div>
 
