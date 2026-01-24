@@ -8,7 +8,7 @@
 - react-router
 
 ### Database : 
-- MySQL
+- Postgres
 
 ### Backend :
 - Node Js
