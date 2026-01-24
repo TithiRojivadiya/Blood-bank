@@ -1,8 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { Link, useNavigate } from "react-router";
+import AuthContext from "../../src/Context/AuthContext";
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
 
   const [formData, setFormData] = useState({
     role: "",
@@ -46,27 +50,23 @@ const Login = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Frontend-only submit (NO backend)
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isValid) return;
-
-    // Simulated login success
-    alert("Login successful!");
-
-    // ... inside handleSubmit
-const handleSubmit = (e) => {
-  e.preventDefault();
-  if (!isValid) return;
-
-  alert("Login successful!");
-
-  // Updated to match folder-based routing
-  if (formData.role === "ADMIN") navigate("/admin/dashboard");
-  if (formData.role === "DONOR") navigate("/donor/dashboard");
-  if (formData.role === "PATIENT") navigate("/patient/dashboard");
-  if (formData.role === "HOSPITAL") navigate("/blood-bank/dashboard");
-};
+    setErr("");
+    setLoading(true);
+    try {
+      await login(formData.role, formData.email, formData.password);
+      if (formData.role === "ADMIN") navigate("/admin/dashboard");
+      else if (formData.role === "DONOR") navigate("/donor/dashboard");
+      else if (formData.role === "PATIENT") navigate("/patient/dashboard");
+      else if (formData.role === "HOSPITAL") navigate("/blood-bank/dashboard");
+      else navigate("/");
+    } catch (e) {
+      setErr(e.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -83,6 +83,7 @@ const handleSubmit = (e) => {
           </p>
         </div>
 
+        {err && <p className="text-red-600 text-sm mb-2">{err}</p>}
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
 
@@ -153,7 +154,7 @@ const handleSubmit = (e) => {
           {/* Login Button */}
           <button
             type="submit"
-            disabled={!isValid}
+            disabled={!isValid || loading}
             className={`w-full py-2.5 rounded-lg font-semibold text-lg transition duration-200 shadow-md
               ${
                 isValid
@@ -161,7 +162,7 @@ const handleSubmit = (e) => {
                   : "bg-gray-300 text-gray-500 cursor-not-allowed"
               }`}
           >
-            Login Securely
+            {loading ? "Signing in…" : "Login Securely"}
           </button>
         </form>
 
