@@ -1,20 +1,28 @@
 const express = require('express');
-const { createClient } = require('@supabase/supabase-js');
+const supabase = require('../lib/supabase');
+const { cacheMiddleware } = require('../middleware/cache');
 
 const router = express.Router();
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 // GET /api/notifications/:recipientKey – list for donor_5, patient_3, hospital_2, admin_0
-router.get('/:recipientKey', async (req, res) => {
+// Cached for 10 seconds (notifications need to be relatively fresh)
+router.get('/:recipientKey', cacheMiddleware(10000), async (req, res) => {
   const { recipientKey } = req.params;
-  const { data, error } = await supabase
+  const { limit, offset } = req.pagination || { limit: 50, offset: 0 };
+  
+  const { data, error, count } = await supabase
     .from('notifications')
-    .select('id, title, body, request_id, read_at, created_at')
+    .select('id, title, body, request_id, read_at, created_at', { count: 'exact' })
     .eq('recipient_key', recipientKey)
     .order('created_at', { ascending: false })
-    .limit(50);
+    .range(offset, offset + limit - 1);
 
   if (error) return res.status(500).json({ error: error.message });
+  
+  if (res.paginated) {
+    return res.paginated(data || [], count || 0);
+  }
+  
   res.json(data || []);
 });
 

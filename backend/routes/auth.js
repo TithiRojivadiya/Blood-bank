@@ -1,8 +1,7 @@
 const express = require('express');
-const { createClient } = require('@supabase/supabase-js');
+const supabase = require('../lib/supabase');
 
 const router = express.Router();
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 const ROLES = { DONOR: 'donors', PATIENT: 'patients', HOSPITAL: 'hospitals', ADMIN: 'admins' };
 

@@ -1,12 +1,13 @@
 const express = require('express');
-const { createClient } = require('@supabase/supabase-js');
+const supabase = require('../lib/supabase');
+const { cacheMiddleware } = require('../middleware/cache');
 
 const router = express.Router();
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 // GET /api/match-donors?hospital_id=1&blood_group=O+
 // Smart Matching: donors within 5km (PostGIS), matching blood group, available
-router.get('/donors', async (req, res) => {
+// Cached for 30 seconds (donor locations may change)
+router.get('/donors', cacheMiddleware(30000), async (req, res) => {
   const { hospital_id, blood_group } = req.query;
   if (!hospital_id || !blood_group) {
     return res.status(400).json({ error: 'hospital_id and blood_group are required' });

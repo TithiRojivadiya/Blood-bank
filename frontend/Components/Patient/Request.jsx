@@ -1,9 +1,11 @@
 import { useState, useEffect, useContext } from "react";
+import { useNavigate } from "react-router";
 import { API_URL } from "../../src/lib/env";
 import AuthContext from "../../src/Context/AuthContext";
 
 const Request = () => {
   const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [hospitals, setHospitals] = useState([]);
   const [formData, setFormData] = useState({
     patientName: "",
@@ -79,6 +81,10 @@ const Request = () => {
       if (!res.ok) throw new Error(data.error || "Request failed");
       setResult(data);
       setFormData((f) => ({ ...f, bloodGroup: "", component: "", unitsRequired: "", urgency: "", hospitalId: "", requiredBy: "", reason: "" }));
+      // Redirect to dashboard after 3 seconds
+      setTimeout(() => {
+        navigate("/patient/dashboard");
+      }, 3000);
     } catch (e) {
       setErr(e.message || "Request failed");
     } finally {
@@ -87,77 +93,244 @@ const Request = () => {
   };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        <h2 style={styles.heading}>Blood Request Form</h2>
-        <p style={styles.subText}>
-          Instant Dispatch: we notify donors within 5km. Fill details to get Smart Matching.
-        </p>
-
-        {err && <p style={{ color: "#c62828", fontSize: 14, marginBottom: 12 }}>{err}</p>}
-
-        {result && (
-          <div style={styles.result}>
-            <h3 style={{ color: "#2e7d32", marginBottom: 8 }}>Request created &amp; dispatched</h3>
-            <p><strong>Matched donors (5km):</strong> {result.matchedDonors?.length ?? 0}</p>
-            <p><strong>Notifications sent:</strong> {result.notificationCount ?? 0}</p>
-            {result.matchedDonors?.length > 0 && (
-              <ul style={{ marginTop: 8, paddingLeft: 18, fontSize: 13 }}>
-                {result.matchedDonors.slice(0, 5).map((d) => (
-                  <li key={d.id}>{d.full_name} – {d.blood_group} ({(d.distance_meters / 1000).toFixed(2)} km)</li>
-                ))}
-                {result.matchedDonors.length > 5 && <li>… and {result.matchedDonors.length - 5} more</li>}
-              </ul>
-            )}
+    <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-50 py-12 px-4">
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-10">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-red-600 mb-2">🩸 Blood Request Form</h2>
+            <p className="text-gray-600">
+              Instant Dispatch: We notify donors within 5km. Fill details to get Smart Matching.
+            </p>
           </div>
-        )}
 
-        <form onSubmit={handleSubmit}>
-          <input style={styles.input} name="patientName" placeholder="Patient Name" value={formData.patientName} onChange={handleChange} />
-          <input style={styles.input} type="number" name="age" placeholder="Age" value={formData.age} onChange={handleChange} />
+          {err && (
+            <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6">
+              <p className="font-semibold">Error</p>
+              <p>{err}</p>
+            </div>
+          )}
 
-          <select style={styles.input} name="bloodGroup" value={formData.bloodGroup} onChange={handleChange}>
-            <option value="">Blood Group</option>
-            {["A+","A-","B+","B-","AB+","AB-","O+","O-"].map((bg) => (
-              <option key={bg} value={bg}>{bg}</option>
-            ))}
-          </select>
+          {result && (
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 p-6 rounded-lg mb-6">
+              <h3 className="text-xl font-bold text-green-700 mb-4 flex items-center gap-2">
+                <span>✅</span> Request Created & Dispatched
+              </h3>
+              {result.fulfilledFromInventory ? (
+                <div className="space-y-2">
+                  <p className="text-green-700">
+                    <strong>✅ Fulfilled from Inventory!</strong> Your request has been fulfilled from available hospital inventory.
+                  </p>
+                  <p className="text-sm text-green-600">
+                    Inventory available: {result.inventoryAvailable} units
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-green-700">
+                    <strong>Matched donors (5km):</strong> {result.matchedDonors?.length ?? 0}
+                  </p>
+                  <p className="text-green-700">
+                    <strong>Notifications sent:</strong> {result.notificationCount ?? 0}
+                  </p>
+                  {result.inventoryAvailable > 0 && (
+                    <p className="text-sm text-green-600">
+                      Note: Hospital has {result.inventoryAvailable} units in inventory (insufficient for full request)
+                    </p>
+                  )}
+                  {result.matchedDonors?.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-sm font-semibold text-green-700 mb-2">Matched Donors:</p>
+                      <ul className="list-disc list-inside space-y-1 text-sm text-green-600">
+                        {result.matchedDonors.slice(0, 5).map((d) => (
+                          <li key={d.id}>
+                            {d.full_name} – {d.blood_group} ({(d.distance_meters / 1000).toFixed(2)} km away)
+                          </li>
+                        ))}
+                        {result.matchedDonors.length > 5 && (
+                          <li>… and {result.matchedDonors.length - 5} more donors</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
-          <select style={styles.input} name="component" value={formData.component} onChange={handleChange}>
-            <option value="">Blood Component</option>
-            <option value="Whole Blood">Whole Blood</option>
-            <option value="RBC">RBC</option>
-            <option value="Platelets">Platelets</option>
-            <option value="Plasma">Plasma</option>
-          </select>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Patient Name</label>
+                <input
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                  name="patientName"
+                  placeholder="Enter patient name"
+                  value={formData.patientName}
+                  onChange={handleChange}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Age</label>
+                <input
+                  type="number"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                  name="age"
+                  placeholder="Age"
+                  value={formData.age}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
 
-          <input style={styles.input} type="number" name="unitsRequired" placeholder="Units Required" value={formData.unitsRequired} onChange={handleChange} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Blood Group *</label>
+                <select
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                  name="bloodGroup"
+                  value={formData.bloodGroup}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select Blood Group</option>
+                  {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
+                    <option key={bg} value={bg}>
+                      {bg}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Component *</label>
+                <select
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                  name="component"
+                  value={formData.component}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select Component</option>
+                  <option value="Whole Blood">Whole Blood</option>
+                  <option value="RBC">RBC</option>
+                  <option value="Platelets">Platelets</option>
+                  <option value="Plasma">Plasma</option>
+                </select>
+              </div>
+            </div>
 
-          <select style={styles.input} name="urgency" value={formData.urgency} onChange={handleChange}>
-            <option value="">Urgency</option>
-            <option value="Normal">Normal</option>
-            <option value="Urgent">Urgent</option>
-            <option value="Emergency">Emergency</option>
-          </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Units Required *</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                  name="unitsRequired"
+                  placeholder="1-10 units"
+                  value={formData.unitsRequired}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Urgency *</label>
+                <select
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                  name="urgency"
+                  value={formData.urgency}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Select Urgency</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Urgent">Urgent</option>
+                  <option value="Emergency">Emergency</option>
+                </select>
+              </div>
+            </div>
 
-          <input style={styles.input} type="datetime-local" name="requiredBy" value={formData.requiredBy} onChange={handleChange} />
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Required By</label>
+              <input
+                type="datetime-local"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                name="requiredBy"
+                value={formData.requiredBy}
+                onChange={handleChange}
+              />
+            </div>
 
-          <select style={styles.input} name="hospitalId" value={formData.hospitalId} onChange={handleChange}>
-            <option value="">Select Hospital</option>
-            {hospitals.map((h) => (
-              <option key={h.id} value={h.id}>{h.name} – {h.city || ""}</option>
-            ))}
-          </select>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Hospital *</label>
+              <select
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                name="hospitalId"
+                value={formData.hospitalId}
+                onChange={handleChange}
+                required
+              >
+                <option value="">Select Hospital</option>
+                {hospitals.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.name} – {h.city || ""}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <input style={styles.input} name="city" placeholder="City" value={formData.city} onChange={handleChange} />
-          <input style={styles.input} name="contactNumber" placeholder="Contact Number" value={formData.contactNumber} onChange={handleChange} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">City</label>
+                <input
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                  name="city"
+                  placeholder="City"
+                  value={formData.city}
+                  onChange={handleChange}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Contact Number</label>
+                <input
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                  name="contactNumber"
+                  placeholder="10-digit mobile"
+                  value={formData.contactNumber}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
 
-          <textarea style={styles.textarea} name="reason" placeholder="Reason (Accident, Surgery, etc.)" value={formData.reason} onChange={handleChange} />
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Reason *</label>
+              <textarea
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition resize-none"
+                name="reason"
+                rows="4"
+                placeholder="Reason (Accident, Surgery, etc.)"
+                value={formData.reason}
+                onChange={handleChange}
+                required
+              />
+            </div>
 
-          <button style={styles.button} type="submit" disabled={loading}>
-            {loading ? "Dispatching…" : "Request Blood (Instant Dispatch)"}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white py-4 rounded-lg font-semibold text-lg hover:from-red-700 hover:to-red-800 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  Dispatching…
+                </>
+              ) : (
+                "🚀 Request Blood (Instant Dispatch)"
+              )}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
