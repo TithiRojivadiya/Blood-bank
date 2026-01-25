@@ -64,7 +64,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => persist(null, null, null);
 
   return (
-    <AuthContext.Provider value={{ role, setRole, user, recipientKey, login, signup, logout }}>
+    <AuthContext.Provider value={{ role, setRole, user, recipientKey, login, signup, logout, persist }}>
       {children}
     </AuthContext.Provider>
   );

@@ -28,7 +28,15 @@ router.post('/', async (req, res) => {
     .select()
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) {
+    // Handle schema cache error specifically
+    if (error.message && error.message.includes('schema cache')) {
+      return res.status(500).json({ 
+        error: 'Database schema cache needs to be refreshed. Please run "NOTIFY pgrst, \'reload schema\';" in Supabase SQL Editor.' 
+      });
+    }
+    return res.status(500).json({ error: error.message });
+  }
 
   // If donor accepted, notify hospital and patient
   if (response === 'accepted') {
@@ -81,7 +89,14 @@ router.get('/request/:requestId', async (req, res) => {
     .eq('request_id', Number(requestId))
     .order('created_at', { ascending: false });
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) {
+    if (error.message && error.message.includes('schema cache')) {
+      return res.status(500).json({ 
+        error: 'Database schema cache needs to be refreshed. Please run "NOTIFY pgrst, \'reload schema\';" in Supabase SQL Editor.' 
+      });
+    }
+    return res.status(500).json({ error: error.message });
+  }
   res.json(data || []);
 });
 
@@ -101,7 +116,14 @@ router.get('/donor/:donorId', async (req, res) => {
     .eq('donor_id', Number(donorId))
     .order('created_at', { ascending: false });
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) {
+    if (error.message && error.message.includes('schema cache')) {
+      return res.status(500).json({ 
+        error: 'Database schema cache needs to be refreshed. Please run "NOTIFY pgrst, \'reload schema\';" in Supabase SQL Editor.' 
+      });
+    }
+    return res.status(500).json({ error: error.message });
+  }
   res.json(data || []);
 });
 

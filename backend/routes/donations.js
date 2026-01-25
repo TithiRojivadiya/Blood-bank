@@ -5,11 +5,43 @@ const { cacheMiddleware } = require('../middleware/cache');
 const router = express.Router();
 
 // POST /api/donations - Record a donation
+// Now only requires: donor_id, hospital_id, donation_date
+// blood_group is fetched from donor profile, component defaults to "Whole Blood", units defaults to 1
 router.post('/', async (req, res) => {
-  const { donor_id, request_id, hospital_id, blood_group, component, units, donation_date } = req.body;
+  const { donor_id, request_id, hospital_id, donation_date } = req.body;
 
-  if (!donor_id || !hospital_id || !blood_group || !component) {
-    return res.status(400).json({ error: 'donor_id, hospital_id, blood_group, and component are required' });
+  if (!donor_id || !hospital_id) {
+    return res.status(400).json({ error: 'donor_id and hospital_id are required' });
+  }
+
+  // Validate hospital exists
+  const hospitalIdNum = Number(hospital_id);
+  const { data: hospital, error: hospitalError } = await supabase
+    .from('hospitals')
+    .select('id')
+    .eq('id', hospitalIdNum)
+    .single();
+
+  if (hospitalError || !hospital) {
+    return res.status(400).json({ error: 'Hospital not found. Invalid hospital_id' });
+  }
+
+  // Get donor's blood group from profile
+  const { data: donor, error: donorError } = await supabase
+    .from('donors')
+    .select('blood_group')
+    .eq('id', Number(donor_id))
+    .single();
+
+  if (donorError || !donor || !donor.blood_group) {
+    return res.status(400).json({ error: 'Donor not found or blood group not set in profile. Please update your profile.' });
+  }
+
+  // Validate donation date is not in the past
+  const donationDate = donation_date || new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0];
+  if (donationDate < today) {
+    return res.status(400).json({ error: 'Donation date cannot be in the past. Please select today or a future date.' });
   }
 
   const { data, error } = await supabase
@@ -17,21 +49,29 @@ router.post('/', async (req, res) => {
     .insert({
       donor_id: Number(donor_id),
       request_id: request_id ? Number(request_id) : null,
-      hospital_id: Number(hospital_id),
-      blood_group: String(blood_group).trim(),
-      component: String(component).trim(),
-      units: units ? Number(units) : 1,
-      donation_date: donation_date || new Date().toISOString().split('T')[0],
+      hospital_id: hospitalIdNum,
+      blood_group: donor.blood_group, // Get from donor profile
+      component: 'Whole Blood', // Default component
+      units: 1, // Default to 1 unit
+      donation_date: donationDate,
     })
     .select()
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) {
+    // Handle schema cache error specifically
+    if (error.message && error.message.includes('schema cache')) {
+      return res.status(500).json({ 
+        error: 'Database schema cache needs to be refreshed. Please run "NOTIFY pgrst, \'reload schema\';" in Supabase SQL Editor.' 
+      });
+    }
+    return res.status(500).json({ error: error.message });
+  }
 
   // Update donor's last donation date
   await supabase
     .from('donors')
-    .update({ last_donation_date: donation_date || new Date().toISOString().split('T')[0] })
+    .update({ last_donation_date: donationDate })
     .eq('id', Number(donor_id));
 
   // If linked to a request, update request status
@@ -43,7 +83,7 @@ router.post('/', async (req, res) => {
       .single();
 
     if (request) {
-      const newFulfilled = (request.units_fulfilled || 0) + (units || 1);
+      const newFulfilled = (request.units_fulfilled || 0) + 1; // Always 1 unit
       const updates = {
         units_fulfilled: newFulfilled,
         donor_id: Number(donor_id),
@@ -111,7 +151,15 @@ router.get('/nearest-hospital/:donorId', async (req, res) => {
     p_donor_id: Number(donorId),
   });
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) {
+    // Handle schema cache error specifically
+    if (error.message && error.message.includes('schema cache')) {
+      return res.status(500).json({ 
+        error: 'Database schema cache needs to be refreshed. Please run "NOTIFY pgrst, \'reload schema\';" in Supabase SQL Editor.' 
+      });
+    }
+    return res.status(500).json({ error: error.message });
+  }
   if (!data || data.length === 0) {
     return res.status(404).json({ error: 'No hospital found within 50km. Please update your location or contact support.' });
   }

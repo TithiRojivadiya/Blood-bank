@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { API_URL } from "../../src/lib/env";
+import { usePageTitle } from "../../src/hooks/usePageTitle";
 
 const Dashboard = () => {
+  usePageTitle();
   const [stats, setStats] = useState({
     totalDonors: 0,
     totalPatients: 0,

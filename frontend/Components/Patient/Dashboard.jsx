@@ -2,9 +2,11 @@ import { useState, useEffect, useContext } from "react";
 import { API_URL } from "../../src/lib/env";
 import AuthContext from "../../src/Context/AuthContext";
 import { Link } from "react-router";
+import { usePageTitle } from "../../src/hooks/usePageTitle";
 
 const Dashboard = () => {
   const { user } = useContext(AuthContext);
+  usePageTitle();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 

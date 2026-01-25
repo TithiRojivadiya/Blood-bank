@@ -48,21 +48,21 @@ export default function NotificationList() {
       .then(() => setList((prev) => prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n))));
   };
 
-  // Donor: Donate button - automatically assigns nearest hospital
+  // Donor: Donate button - uses hospital from request
   const handleDonate = async (requestId, notificationId) => {
     if (!user?.id || user?.role !== "DONOR") return;
     setResponding((s) => ({ ...s, [requestId]: true }));
     try {
-      // Get request details
+      // Get request details with hospital information
       const reqRes = await fetch(`${API_URL}/api/requests/${requestId}`);
       const requestData = await reqRes.json().catch(() => ({}));
       if (!reqRes.ok) throw new Error("Failed to get request details");
 
-      // Find nearest hospital to donor
-      const hospitalRes = await fetch(`${API_URL}/api/donations/nearest-hospital/${user.id}`);
-      const hospitalData = await hospitalRes.json().catch(() => ({}));
-      if (!hospitalRes.ok || !hospitalData) {
-        throw new Error(hospitalData?.error || "No hospital found within 50km. Please update your location.");
+      // Use hospital from the request (assigned by patient's location)
+      // Hospital data comes as nested object from Supabase relation
+      const hospitalData = requestData.hospitals;
+      if (!hospitalData || !hospitalData.id) {
+        throw new Error("Hospital information not found in request. Please contact support.");
       }
 
       // Create donor response
@@ -92,6 +92,28 @@ export default function NotificationList() {
       });
       if (!invRes.ok) console.warn("Failed to update inventory");
 
+      // Build hospital details message for donor
+      const hospitalDetails = [
+        `🏥 Hospital: ${hospitalData.name || "Hospital"}`,
+        `📍 Location: ${hospitalData.city || "N/A"}`,
+        hospitalData.phone ? `📞 Phone: ${hospitalData.phone}` : "",
+        hospitalData.contact_person ? `👤 Contact Person: ${hospitalData.contact_person}` : "",
+        `🩸 Blood Required: ${requestData.blood_group} ${requestData.component}`,
+        `📋 Request ID: #${requestId}`,
+      ].filter(Boolean).join("\n");
+
+      // Notify donor with hospital details
+      await fetch(`${API_URL}/api/notifications`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipient_key: `donor_${user.id}`,
+          title: "✅ Donation Confirmed - Hospital Details",
+          body: `Thank you for accepting! Please visit the following hospital to donate:\n\n${hospitalDetails}\n\nPlease contact the hospital before visiting.`,
+          request_id: requestId,
+        }),
+      }).catch(() => {});
+
       // Notify hospital
       await fetch(`${API_URL}/api/notifications`, {
         method: "POST",
@@ -111,7 +133,7 @@ export default function NotificationList() {
         body: JSON.stringify({
           recipient_key: requestData.patient_id ? `patient_${requestData.patient_id}` : null,
           title: "✅ Blood Available",
-          body: `A donor is ready to donate. Blood will be available at ${hospitalData.name}. Please contact the hospital.`,
+          body: `A donor is ready to donate. Blood will be available at ${hospitalData.name || "the hospital"}. Please contact the hospital.`,
           request_id: requestId,
         }),
       }).catch(() => {});

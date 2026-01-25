@@ -6,6 +6,7 @@ const LandingPage = lazy(() => import("../Components/Common/LandingPage"));
 const Login = lazy(() => import("../Components/Common/Login"));
 const Signup = lazy(() => import("../Components/Common/SignUp"));
 const AboutUs = lazy(() => import("../Components/Common/AboutUs"));
+const OAuthCallback = lazy(() => import("../Components/Common/OAuthCallback"));
 
 // Layouts
 const PatientNavBar = lazy(() => import("../Components/Common/PatientNavBar"));
@@ -33,9 +34,7 @@ const DonorDonate = lazy(() => import("../Components/Donor/Donate"));
 
 // Admin
 const AdminNotification = lazy(() => import("../Components/Admin/Notification"));
-const AdminDonors = lazy(() => import("../Components/Admin/Donors"));
 const AdminUsers = lazy(() => import("../Components/Admin/Users"));
-const AdminHospitals = lazy(() => import("../Components/Admin/Hospitals"));
 const AdminHistory = lazy(() => import("../Components/Admin/History"));
 
 // Blood Bank
@@ -60,6 +59,7 @@ const App = () => (
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/about-us" element={<AboutUs />} />
+      <Route path="/auth/callback" element={<OAuthCallback />} />
 
       <Route path="/patient" element={<PatientNavBar />}>
         <Route index element={<Navigate to="dashboard" replace />} />
@@ -83,9 +83,7 @@ const App = () => (
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="notification" element={<AdminNotification />} />
-        <Route path="donors" element={<AdminDonors />} />
         <Route path="users" element={<AdminUsers />} />
-        <Route path="hospitals" element={<AdminHospitals />} />
         <Route path="history" element={<AdminHistory />} />
       </Route>
 

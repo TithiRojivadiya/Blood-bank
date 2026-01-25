@@ -25,9 +25,55 @@ const Request = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [err, setErr] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    // Fetch suggestions when relevant fields change
+    if (['bloodGroup', 'component', 'unitsRequired', 'city'].includes(e.target.name)) {
+      fetchSuggestions();
+    }
+  };
+
+  const fetchSuggestions = async () => {
+    if (!formData.bloodGroup || !formData.component || !formData.unitsRequired || (!formData.city && !myLocation)) {
+      setSuggestions([]);
+      return;
+    }
+
+    setLoadingSuggestions(true);
+    try {
+      const params = new URLSearchParams({
+        blood_group: formData.bloodGroup,
+        component: formData.component,
+        units_required: formData.unitsRequired,
+      });
+      
+      if (myLocation) {
+        params.append('request_latitude', myLocation.lat);
+        params.append('request_longitude', myLocation.lng);
+      }
+      if (formData.city) {
+        params.append('request_city', formData.city);
+      }
+
+      const res = await fetch(`${API_URL}/api/requests/suggest-hospitals?${params}`);
+      const data = await res.json().catch(() => ({ suggestions: [] }));
+      setSuggestions(data.suggestions || []);
+    } catch (e) {
+      console.error('Failed to fetch suggestions:', e);
+      setSuggestions([]);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  // Fetch suggestions when location changes
+  const handleLocationChange = () => {
+    if (myLocation && formData.bloodGroup && formData.component && formData.unitsRequired) {
+      fetchSuggestions();
+    }
   };
 
   const getMyLocation = () => {
@@ -40,9 +86,16 @@ const Request = () => {
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setMyLocation(loc);
         setLocationError("");
         setLocationLoading(false);
+        // Fetch suggestions after location is set
+        setTimeout(() => {
+          if (formData.bloodGroup && formData.component && formData.unitsRequired) {
+            fetchSuggestions();
+          }
+        }, 100);
       },
       () => {
         setLocationError("Could not get location. Use Enter manually with your city.");
@@ -58,8 +111,9 @@ const Request = () => {
       setErr("Blood group, component, units, urgency, and reason are required.");
       return false;
     }
-    if (!formData.city || !formData.city.trim()) {
-      setErr("City is required. Hospitals are notified within 10 km or in your entire city.");
+    // Location is required - either GPS or city
+    if (!myLocation && (!formData.city || !formData.city.trim())) {
+      setErr("Location is required. Please use your GPS location or enter a city name.");
       return false;
     }
     if (formData.age && (Number(formData.age) <= 0 || Number(formData.age) > 120)) {
@@ -260,6 +314,65 @@ const Request = () => {
                 />
               </div>
             </div>
+
+            {/* Hospital Suggestions */}
+            {suggestions.length > 0 && (
+              <div className="border-2 border-blue-200 rounded-xl p-5 bg-gradient-to-br from-blue-50 to-indigo-50">
+                <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                  <span>🏥</span> Suggested Hospitals with Blood Availability
+                </h3>
+                {loadingSuggestions ? (
+                  <p className="text-gray-600">Loading suggestions...</p>
+                ) : (
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {suggestions.map((hospital) => (
+                      <div
+                        key={hospital.id}
+                        className={`p-4 rounded-lg border-2 ${
+                          hospital.has_sufficient
+                            ? "bg-green-50 border-green-300"
+                            : hospital.status === "insufficient"
+                            ? "bg-yellow-50 border-yellow-300"
+                            : "bg-gray-50 border-gray-300"
+                        }`}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-gray-800">{hospital.name}</h4>
+                            <p className="text-sm text-gray-600">{hospital.city}</p>
+                            {hospital.distance_meters != null && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                📍 {((hospital.distance_meters / 1000).toFixed(2))} km away
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <div
+                              className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                                hospital.has_sufficient
+                                  ? "bg-green-200 text-green-800"
+                                  : hospital.status === "insufficient"
+                                  ? "bg-yellow-200 text-yellow-800"
+                                  : "bg-gray-200 text-gray-800"
+                              }`}
+                            >
+                              {hospital.has_sufficient
+                                ? "✅ Available"
+                                : hospital.status === "insufficient"
+                                ? "⚠️ Limited"
+                                : "❌ Unavailable"}
+                            </div>
+                            <p className="text-xs text-gray-600 mt-1">
+                              {hospital.units_available} units available
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>

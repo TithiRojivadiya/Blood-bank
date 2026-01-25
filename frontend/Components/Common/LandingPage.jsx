@@ -1,8 +1,10 @@
 import React from "react";
 import { useNavigate } from "react-router";
+import { usePageTitle } from "../../src/hooks/usePageTitle";
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  usePageTitle();
 
   const scrollTo = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });

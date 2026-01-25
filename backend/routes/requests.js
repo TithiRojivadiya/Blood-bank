@@ -84,6 +84,90 @@ router.get('/:id', async (req, res) => {
   res.json({ ...data, donor_responses: responses || [] });
 });
 
+// GET /api/requests/suggest-hospitals - Suggest hospitals with sufficient blood
+// Query: request_latitude?, request_longitude?, request_city, blood_group, component, units_required
+router.get('/suggest-hospitals', async (req, res) => {
+  const {
+    request_latitude,
+    request_longitude,
+    request_city,
+    blood_group,
+    component,
+    units_required,
+  } = req.query;
+
+  if (!blood_group || !component || !units_required) {
+    return res.status(400).json({
+      error: 'blood_group, component, and units_required are required',
+    });
+  }
+
+  const city = request_city ? String(request_city).trim() : null;
+  const lat = request_latitude != null ? Number(request_latitude) : null;
+  const lng = request_longitude != null ? Number(request_longitude) : null;
+  const hasCoords = lat != null && lng != null && !isNaN(lat) && !isNaN(lng);
+  const uReq = Number(units_required);
+  const bg = String(blood_group).trim();
+  const comp = String(component).trim();
+
+  if (isNaN(uReq) || uReq <= 0) {
+    return res.status(400).json({ error: 'units_required must be a positive number' });
+  }
+
+  // Get hospital list: within 10km if coords, else fallback to city
+  let hospitalList = [];
+  if (hasCoords) {
+    const { data: within10 } = await supabase.rpc('hospitals_within_10km', { p_lat: lat, p_lng: lng });
+    hospitalList = within10 || [];
+    if (hospitalList.length === 0 && city) {
+      const { data: inCity } = await supabase.rpc('hospitals_in_city', { p_city: city });
+      hospitalList = inCity || [];
+    }
+  } else if (city) {
+    const { data: inCity } = await supabase.rpc('hospitals_in_city', { p_city: city });
+    hospitalList = inCity || [];
+  }
+
+  if (hospitalList.length === 0) {
+    return res.json({ suggestions: [], message: 'No hospitals found in the specified location' });
+  }
+
+  // Check inventory for each hospital and return suggestions with availability
+  const suggestions = [];
+  for (const h of hospitalList) {
+    const { data: inv } = await supabase
+      .from('inventory')
+      .select('units_available')
+      .eq('hospital_id', h.id)
+      .eq('blood_group', bg)
+      .eq('component', comp)
+      .single();
+    
+    const available = inv?.units_available || 0;
+    const hasEnough = available >= uReq;
+    
+    suggestions.push({
+      ...h,
+      units_available: available,
+      has_sufficient: hasEnough,
+      status: hasEnough ? 'available' : available > 0 ? 'insufficient' : 'unavailable',
+    });
+  }
+
+  // Sort: sufficient first, then by distance/name
+  suggestions.sort((a, b) => {
+    if (a.has_sufficient !== b.has_sufficient) {
+      return b.has_sufficient ? 1 : -1;
+    }
+    if (a.distance_meters != null && b.distance_meters != null) {
+      return a.distance_meters - b.distance_meters;
+    }
+    return a.name.localeCompare(b.name);
+  });
+
+  res.json({ suggestions, total: suggestions.length });
+});
+
 // POST /api/requests – Location-based: 10km hospitals or city, inventory first, then donors
 // Body: { request_latitude?, request_longitude?, request_city, blood_group, component, units_required, urgency, required_by?, reason, patient_id? }
 // hospital_id is chosen by backend: 10km then city; inventory checked first; donors only if no hospital has enough.

@@ -58,14 +58,41 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'hospital_id, blood_group, and component are required' });
   }
 
+  const hospitalIdNum = Number(hospital_id);
+  if (isNaN(hospitalIdNum) || hospitalIdNum <= 0) {
+    return res.status(400).json({ error: 'Invalid hospital_id' });
+  }
+
+  // Validate hospital exists before inserting inventory
+  const { data: hospital, error: hospitalError } = await supabase
+    .from('hospitals')
+    .select('id')
+    .eq('id', hospitalIdNum)
+    .single();
+
+  if (hospitalError || !hospital) {
+    return res.status(400).json({ error: 'Hospital not found. Invalid hospital_id' });
+  }
+
+  // Validate units are real numbers
+  const unitsAvail = units_available != null ? Number(units_available) : 0;
+  const unitsRes = units_reserved != null ? Number(units_reserved) : 0;
+  
+  if (isNaN(unitsAvail) || unitsAvail < 0) {
+    return res.status(400).json({ error: 'units_available must be a valid non-negative number' });
+  }
+  if (isNaN(unitsRes) || unitsRes < 0) {
+    return res.status(400).json({ error: 'units_reserved must be a valid non-negative number' });
+  }
+
   const { data, error } = await supabase
     .from('inventory')
     .upsert({
-      hospital_id: Number(hospital_id),
+      hospital_id: hospitalIdNum,
       blood_group: String(blood_group).trim(),
       component: String(component).trim(),
-      units_available: units_available != null ? Number(units_available) : 0,
-      units_reserved: units_reserved != null ? Number(units_reserved) : 0,
+      units_available: unitsAvail,
+      units_reserved: unitsRes,
     }, {
       onConflict: 'hospital_id,blood_group,component'
     })
@@ -113,26 +140,48 @@ router.post('/adjust', async (req, res) => {
     return res.status(400).json({ error: 'hospital_id, blood_group, component, and units_change are required' });
   }
 
+  const hospitalIdNum = Number(hospital_id);
+  if (isNaN(hospitalIdNum) || hospitalIdNum <= 0) {
+    return res.status(400).json({ error: 'Invalid hospital_id' });
+  }
+
+  // Validate hospital exists
+  const { data: hospital, error: hospitalError } = await supabase
+    .from('hospitals')
+    .select('id')
+    .eq('id', hospitalIdNum)
+    .single();
+
+  if (hospitalError || !hospital) {
+    return res.status(400).json({ error: 'Hospital not found. Invalid hospital_id' });
+  }
+
+  // Validate units_change is a real number
+  const unitsChange = Number(units_change);
+  if (isNaN(unitsChange)) {
+    return res.status(400).json({ error: 'units_change must be a valid number' });
+  }
+
   // Get current inventory
   const { data: current, error: fetchError } = await supabase
     .from('inventory')
     .select('units_available')
-    .eq('hospital_id', Number(hospital_id))
+    .eq('hospital_id', hospitalIdNum)
     .eq('blood_group', String(blood_group).trim())
     .eq('component', String(component).trim())
     .single();
 
-  let newUnits = Number(units_change);
+  let newUnits = unitsChange;
   if (current) {
     newUnits = operation === 'subtract' 
-      ? Math.max(0, current.units_available - Number(units_change))
-      : current.units_available + Number(units_change);
+      ? Math.max(0, current.units_available - unitsChange)
+      : current.units_available + unitsChange;
   }
 
   const { data, error } = await supabase
     .from('inventory')
     .upsert({
-      hospital_id: Number(hospital_id),
+      hospital_id: hospitalIdNum,
       blood_group: String(blood_group).trim(),
       component: String(component).trim(),
       units_available: newUnits,

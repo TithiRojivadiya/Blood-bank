@@ -3,9 +3,11 @@ import { Link } from "react-router";
 import { API_URL } from "../../src/lib/env";
 import AuthContext from "../../src/Context/AuthContext";
 import { supabase } from "../../src/lib/supabase";
+import { usePageTitle } from "../../src/hooks/usePageTitle";
 
 const Inventory = () => {
   const { user } = useContext(AuthContext);
+  usePageTitle(); // Set page title based on route
   const [inventory, setInventory] = useState([]);
   const [summary, setSummary] = useState({});
   const [loading, setLoading] = useState(true);
@@ -208,15 +210,18 @@ const Inventory = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold text-gray-800">Blood Inventory Management</h2>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h2 className="text-4xl font-bold text-gray-800 mb-2">Blood Inventory Management</h2>
+          <p className="text-gray-600">Track and manage your blood inventory across all blood groups and components</p>
+        </div>
         <button
           onClick={() => {
             setShowAddForm(!showAddForm);
             setEditing(null);
             setFormData({ blood_group: "", component: "", units_available: 0 });
           }}
-          className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition shadow-md"
+          className="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-3 rounded-xl hover:from-red-700 hover:to-red-800 transition shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
         >
           {showAddForm ? "Cancel" : "+ Add Inventory"}
         </button>
@@ -249,78 +254,92 @@ const Inventory = () => {
 
       {/* Add/Edit Form */}
       {showAddForm && (
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-200">
-          <h3 className="text-xl font-semibold mb-4 text-gray-800">
-            {editing ? "Edit Inventory" : "Add New Inventory"}
-          </h3>
-          <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <select
-              value={formData.blood_group}
-              onChange={(e) => setFormData({ ...formData, blood_group: e.target.value })}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              required
-            >
-              <option value="">Select Blood Group</option>
-              {bloodGroups.map((bg) => (
-                <option key={bg} value={bg}>
-                  {bg}
-                </option>
-              ))}
-            </select>
-            <select
-              value={formData.component}
-              onChange={(e) => setFormData({ ...formData, component: e.target.value })}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              required
-            >
-              <option value="">Select Component</option>
-              {components.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                min="0"
-                value={formData.units_available}
-                onChange={(e) =>
-                  setFormData({ ...formData, units_available: parseInt(e.target.value) || 0 })
-                }
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                placeholder="Units"
+        <div className="bg-gradient-to-br from-white to-red-50 rounded-2xl shadow-xl p-8 mb-8 border-2 border-red-100">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 bg-red-100 rounded-xl">
+              <span className="text-2xl">📝</span>
+            </div>
+            <h3 className="text-2xl font-bold text-gray-800">
+              {editing ? "Edit Inventory Item" : "Add New Inventory Item"}
+            </h3>
+          </div>
+          <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Blood Group *</label>
+              <select
+                value={formData.blood_group}
+                onChange={(e) => setFormData({ ...formData, blood_group: e.target.value })}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
                 required
-              />
-              <button
-                type="submit"
-                className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition"
               >
-                {editing ? "Update" : "Add"}
-              </button>
+                <option value="">Select Blood Group</option>
+                {bloodGroups.map((bg) => (
+                  <option key={bg} value={bg}>
+                    {bg}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Component *</label>
+              <select
+                value={formData.component}
+                onChange={(e) => setFormData({ ...formData, component: e.target.value })}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                required
+              >
+                <option value="">Select Component</option>
+                {components.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Units Available *</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.units_available}
+                  onChange={(e) =>
+                    setFormData({ ...formData, units_available: parseInt(e.target.value) || 0 })
+                  }
+                  className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                  placeholder="0"
+                  required
+                />
+                <button
+                  type="submit"
+                  className="bg-gradient-to-r from-red-600 to-red-700 text-white px-8 py-3 rounded-xl hover:from-red-700 hover:to-red-800 transition shadow-lg hover:shadow-xl font-semibold"
+                >
+                  {editing ? "Update" : "Add"}
+                </button>
+              </div>
             </div>
           </form>
         </div>
       )}
 
       {/* Inventory Table - Tabular Format (Components as Columns, Blood Groups as Rows) */}
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-100">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
-            <thead className="bg-red-600 text-white">
+            <thead className="bg-gradient-to-r from-red-600 to-red-700 text-white">
               <tr>
-                <th className="px-4 py-3 text-left font-semibold border border-red-700 sticky left-0 bg-red-600 z-10">
+                <th className="px-6 py-4 text-left font-bold text-lg border border-red-800 sticky left-0 bg-gradient-to-r from-red-600 to-red-700 z-10 shadow-lg">
                   Blood Group
                 </th>
                 {components.map((comp) => (
-                  <th key={comp} className="px-4 py-3 text-center font-semibold border border-red-700 min-w-[120px]">
+                  <th key={comp} className="px-6 py-4 text-center font-bold border border-red-800 min-w-[140px]">
                     {comp}
                   </th>
                 ))}
-                <th className="px-4 py-3 text-center font-semibold border border-red-700 bg-red-700 min-w-[100px]">
+                <th className="px-6 py-4 text-center font-bold border border-red-800 bg-red-800 min-w-[120px]">
                   Total
                 </th>
-                <th className="px-4 py-3 text-center font-semibold border border-red-700 bg-red-700 min-w-[120px]">
+                <th className="px-6 py-4 text-center font-bold border border-red-800 bg-red-800 min-w-[180px]">
                   Actions
                 </th>
               </tr>
@@ -364,31 +383,42 @@ const Inventory = () => {
                         <td className="px-4 py-3 text-center font-semibold text-gray-800 border border-gray-200 bg-gray-50">
                           {rowTotals[bg]}
                         </td>
-                        <td className="px-4 py-3 text-center border border-gray-200">
-                          {hasInventory && (
-                            <div className="flex gap-2 justify-center">
-                              {inventory
-                                .filter(inv => inv.blood_group === bg)
-                                .map((item) => (
-                                  <div key={item.id} className="flex gap-1">
-                                    <button
-                                      onClick={() => handleEdit(item)}
-                                      className="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 hover:bg-blue-50 rounded"
-                                      title="Edit"
-                                    >
-                                      ✏️
-                                    </button>
-                                    <button
-                                      onClick={() => handleDelete(item.id)}
-                                      className="text-red-600 hover:text-red-800 text-xs font-medium px-2 py-1 hover:bg-red-50 rounded"
-                                      title="Remove"
-                                    >
-                                      🗑️
-                                    </button>
-                                  </div>
-                                ))}
-                            </div>
-                          )}
+                        <td className="px-6 py-4 text-center border border-gray-200 bg-gray-50">
+                          {(() => {
+                            if (!hasInventory) return null;
+                            
+                            // Get the first inventory item for this blood group from the matrix
+                            // This ensures only ONE set of buttons per row
+                            let firstItem = null;
+                            for (const comp of components) {
+                              if (matrix[bg] && matrix[bg][comp] !== null && matrix[bg][comp] !== undefined) {
+                                firstItem = matrix[bg][comp];
+                                break; // Stop at first found item
+                              }
+                            }
+                            
+                            // Only render buttons if we found an item
+                            if (!firstItem) return null;
+                            
+                            return (
+                              <div key={`actions-${bg}`} className="flex gap-3 justify-center items-center">
+                                <button
+                                  onClick={() => handleEdit(firstItem)}
+                                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-sm font-semibold px-5 py-2 rounded-lg transition shadow-md hover:shadow-lg transform hover:scale-105"
+                                  title="Edit this inventory item"
+                                >
+                                  ✏️ Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(firstItem.id)}
+                                  className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white text-sm font-semibold px-5 py-2 rounded-lg transition shadow-md hover:shadow-lg transform hover:scale-105"
+                                  title="Delete this inventory item"
+                                >
+                                  🗑️ Delete
+                                </button>
+                              </div>
+                            );
+                          })()}
                         </td>
                       </tr>
                     );
