@@ -26,6 +26,29 @@ router.get('/:recipientKey', cacheMiddleware(10000), async (req, res) => {
   res.json(data || []);
 });
 
+// POST /api/notifications - Create notification
+router.post('/', async (req, res) => {
+  const { recipient_key, title, body, request_id } = req.body;
+
+  if (!recipient_key || !title) {
+    return res.status(400).json({ error: 'recipient_key and title are required' });
+  }
+
+  const { data, error } = await supabase
+    .from('notifications')
+    .insert({
+      recipient_key: String(recipient_key).trim(),
+      title: String(title).trim(),
+      body: body ? String(body).trim() : null,
+      request_id: request_id ? Number(request_id) : null,
+    })
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json(data);
+});
+
 // PATCH /api/notifications/:id/read – mark as read
 router.patch('/:id/read', async (req, res) => {
   const { id } = req.params;

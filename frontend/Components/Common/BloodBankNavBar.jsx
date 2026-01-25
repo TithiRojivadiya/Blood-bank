@@ -28,6 +28,7 @@ const BloodBankNavBar = () => {
           <NavLink to="inventory" className={navClass}>Inventory</NavLink>
           <NavLink to="notification" className={navClass}>🔔 Notifications</NavLink>
           <NavLink to="profile" className={navClass}>Profile</NavLink>
+          <NavLink to="history" className={navClass}>History</NavLink>
         </div>
 
         <button

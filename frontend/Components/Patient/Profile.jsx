@@ -1,90 +1,62 @@
-import { useState } from "react";
+import { useState, useEffect, useContext } from "react";
+import { API_URL } from "../../src/lib/env";
+import AuthContext from "../../src/Context/AuthContext";
 
 const Profile = () => {
+  const { user } = useContext(AuthContext);
+  const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [profileData, setProfileData] = useState({ full_name: "", email: "", phone: "", city: "" });
 
-  const [profileData, setProfileData] = useState({
-    fullName: null,
-    email: null,
-    phoneNumber: null,
-    city: null
-  });
+  useEffect(() => {
+    if (!user?.id || user?.role !== "PATIENT") return;
+    fetch(`${API_URL}/api/profile?role=PATIENT&id=${user.id}`)
+      .then((r) => r.json())
+      .then((d) =>
+        setProfileData({
+          full_name: d.full_name ?? "",
+          email: d.email ?? "",
+          phone: d.phone ?? "",
+          city: d.city ?? "",
+        })
+      )
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [user?.id, user?.role]);
 
-  const handleChange = (e) => {
-    setProfileData({
-      ...profileData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleEditToggle = () => {
-    setIsEditing(!isEditing);
-  };
+  const handleChange = (e) => setProfileData((p) => ({ ...p, [e.target.name]: e.target.value }));
 
   const handleSave = () => {
-    // Later: API call to update profile
-    console.log("Updated Profile Data:", profileData);
-    alert("✅ Profile updated successfully!");
-    setIsEditing(false);
+    fetch(`${API_URL}/api/profile`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: "PATIENT", id: user.id, full_name: profileData.full_name, phone: profileData.phone, city: profileData.city }),
+    })
+      .then((r) => r.json())
+      .then(() => { alert("Profile updated."); setIsEditing(false); })
+      .catch(() => alert("Failed to update."));
   };
+
+  if (loading) return <p className="p-6 text-gray-500">Loading profile…</p>;
+  if (!user?.id) return <p className="p-6 text-gray-500">Log in to view profile.</p>;
 
   return (
     <div style={styles.page}>
       <div style={styles.card}>
         <h1 style={styles.heading}>My Profile</h1>
         <p style={styles.subText}>View and update your personal information</p>
-
-        {/* Full Name */}
         <label style={styles.label}>Full Name</label>
-        <input
-          style={styles.input}
-          name="fullName"
-          value={profileData.fullName ?? "null"}
-          disabled={!isEditing}
-          onChange={handleChange}
-        />
-
-        {/* Email */}
+        <input style={styles.input} name="full_name" value={profileData.full_name} disabled={!isEditing} onChange={handleChange} />
         <label style={styles.label}>Email</label>
-        <input
-          style={styles.input}
-          name="email"
-          value={profileData.email ?? "null"}
-          disabled={!isEditing}
-          onChange={handleChange}
-        />
-
-        {/* Phone Number */}
-        <label style={styles.label}>Phone Number</label>
-        <input
-          style={styles.input}
-          name="phoneNumber"
-          value={profileData.phoneNumber ?? "null"}
-          disabled={!isEditing}
-          onChange={handleChange}
-          pattern="[6-9][0-9]{9}"
-          title="Phone number must start with 6, 7, 8, or 9"
-        />
-
-        {/* City */}
+        <input style={styles.input} name="email" value={profileData.email} disabled readOnly />
+        <label style={styles.label}>Phone</label>
+        <input style={styles.input} name="phone" value={profileData.phone} disabled={!isEditing} onChange={handleChange} />
         <label style={styles.label}>City / Area</label>
-        <input
-          style={styles.input}
-          name="city"
-          value={profileData.city ?? "null"}
-          disabled={!isEditing}
-          onChange={handleChange}
-        />
-
-        {/* Buttons */}
+        <input style={styles.input} name="city" value={profileData.city} disabled={!isEditing} onChange={handleChange} />
         {!isEditing ? (
-          <button style={styles.editButton} onClick={handleEditToggle}>
-            Edit Profile
-          </button>
+          <button style={styles.editButton} onClick={() => setIsEditing(true)}>Edit Profile</button>
         ) : (
-          <button style={styles.saveButton} onClick={handleSave}>
-            Save Changes
-          </button>
+          <button style={styles.saveButton} onClick={handleSave}>Save</button>
         )}
       </div>
     </div>
@@ -92,68 +64,14 @@ const Profile = () => {
 };
 
 const styles = {
-  page: {
-    minHeight: "100vh",
-    backgroundColor: "#f7f9fc",
-    padding: "50px 20px",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "flex-start"
-  },
-  card: {
-    background: "#ffffff",
-    padding: "35px",
-    width: "100%",
-    maxWidth: "420px",
-    borderRadius: "16px",
-    boxShadow: "0 12px 30px rgba(0,0,0,0.1)"
-  },
-  heading: {
-    textAlign: "center",
-    color: "#c62828",
-    marginBottom: "6px"
-  },
-  subText: {
-    textAlign: "center",
-    fontSize: "14px",
-    color: "#666",
-    marginBottom: "25px"
-  },
-  label: {
-    fontSize: "13px",
-    fontWeight: "600",
-    color: "#444"
-  },
-  input: {
-    width: "100%",
-    padding: "11px",
-    marginBottom: "16px",
-    marginTop: "4px",
-    borderRadius: "10px",
-    border: "1px solid #ddd",
-    backgroundColor: "#fafafa",
-    fontSize: "14px"
-  },
-  editButton: {
-    width: "100%",
-    padding: "12px",
-    backgroundColor: "#d32f2f",
-    color: "#fff",
-    border: "none",
-    borderRadius: "12px",
-    fontSize: "15px",
-    cursor: "pointer"
-  },
-  saveButton: {
-    width: "100%",
-    padding: "12px",
-    backgroundColor: "#2e7d32",
-    color: "#fff",
-    border: "none",
-    borderRadius: "12px",
-    fontSize: "15px",
-    cursor: "pointer"
-  }
+  page: { minHeight: "100vh", backgroundColor: "#f7f9fc", padding: "50px 20px", display: "flex", justifyContent: "center", alignItems: "flex-start" },
+  card: { background: "#ffffff", padding: 35, width: "100%", maxWidth: 420, borderRadius: 16, boxShadow: "0 12px 30px rgba(0,0,0,0.1)" },
+  heading: { textAlign: "center", color: "#c62828", marginBottom: 6 },
+  subText: { textAlign: "center", fontSize: 14, color: "#666", marginBottom: 25 },
+  label: { fontSize: 13, fontWeight: 600, color: "#444" },
+  input: { width: "100%", padding: 11, marginBottom: 16, marginTop: 4, borderRadius: 10, border: "1px solid #ddd", backgroundColor: "#fafafa", fontSize: 14 },
+  editButton: { width: "100%", padding: 12, backgroundColor: "#d32f2f", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, cursor: "pointer" },
+  saveButton: { width: "100%", padding: 12, backgroundColor: "#2e7d32", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, cursor: "pointer" },
 };
 
 export default Profile;

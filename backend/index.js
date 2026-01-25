@@ -13,6 +13,8 @@ const notifications = require('./routes/notifications');
 const inventory = require('./routes/inventory');
 const donorResponses = require('./routes/donorResponses');
 const donations = require('./routes/donations');
+const profile = require('./routes/profile');
+const history = require('./routes/history');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -49,10 +51,12 @@ app.use('/api/requests', requests);
 app.use('/api/match', match);
 app.use('/api/notifications', notifications);
 
-// Inventory, Donor Responses, Donations
+// Inventory, Donor Responses, Donations, Profile
 app.use('/api/inventory', inventory);
 app.use('/api/donor-responses', donorResponses);
 app.use('/api/donations', donations);
+app.use('/api/profile', profile);
+app.use('/api/history', history);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

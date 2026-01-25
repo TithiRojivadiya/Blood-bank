@@ -144,6 +144,11 @@ router.post('/adjust', async (req, res) => {
     .single();
 
   if (error) return res.status(500).json({ error: error.message });
+  
+  // Clear inventory cache
+  clearCache(`/api/inventory/${hospital_id}`);
+  clearCache(`/api/inventory/${hospital_id}/summary`);
+  
   res.json(data);
 });
 

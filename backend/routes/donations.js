@@ -103,4 +103,19 @@ router.get('/hospital/:hospitalId', async (req, res) => {
   res.json(data || []);
 });
 
+// GET /api/donations/nearest-hospital/:donorId - Find nearest hospital to a donor
+router.get('/nearest-hospital/:donorId', async (req, res) => {
+  const { donorId } = req.params;
+
+  const { data, error } = await supabase.rpc('find_nearest_hospital_to_donor', {
+    p_donor_id: Number(donorId),
+  });
+
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data || data.length === 0) {
+    return res.status(404).json({ error: 'No hospital found within 50km. Please update your location or contact support.' });
+  }
+  res.json(data[0]);
+});
+
 module.exports = router;

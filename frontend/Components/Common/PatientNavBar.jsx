@@ -28,6 +28,7 @@ const PatientNavBar = () => {
           <NavLink to="profile" className={navClass}>Profile</NavLink>
           <NavLink to="notification" className={navClass}>🔔 Notifications</NavLink>
           <NavLink to="request" className={navClass}>Request</NavLink>
+          <NavLink to="history" className={navClass}>History</NavLink>
         </div>
 
         <button

@@ -38,8 +38,8 @@ const Dashboard = () => {
           r?.blood_requests?.status === "pending" &&
           r?.blood_requests != null
       );
-      setActiveRequests(pending);
-      setDonationHistory(donations.slice(0, 5));
+      setActiveRequests(pending.slice(0, 3)); // Show only top 3
+      setDonationHistory(donations.slice(0, 3)); // Show only top 3
       setStats({
         totalDonations: donations.length,
         activeRequests: pending.length,
@@ -122,8 +122,8 @@ const Dashboard = () => {
       {/* Active Requests */}
       <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-semibold text-gray-800">Active Blood Requests</h3>
-          <Link to="/donor/notification" className="text-red-600 hover:text-red-800 font-medium">
+          <h3 className="text-xl font-semibold text-gray-800">Active Blood Requests (Top 3)</h3>
+          <Link to="/donor/notification" className="text-red-600 hover:text-red-800 font-medium text-sm">
             View All Notifications →
           </Link>
         </div>
@@ -186,7 +186,12 @@ const Dashboard = () => {
 
       {/* Recent Donations */}
       <div className="bg-white rounded-xl shadow-lg p-6">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4">Recent Donations</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-semibold text-gray-800">Recent Donations (Top 3)</h3>
+          <Link to="/donor/history" className="text-red-600 hover:text-red-800 font-medium text-sm">
+            View All History →
+          </Link>
+        </div>
         {donationHistory.length === 0 ? (
           <p className="text-gray-500 text-center py-8">No donation history yet.</p>
         ) : (

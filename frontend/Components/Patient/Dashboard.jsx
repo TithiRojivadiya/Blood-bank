@@ -26,7 +26,7 @@ const Dashboard = () => {
         return;
       }
       const list = Array.isArray(json) ? json : (json?.data ?? []);
-      setRequests(Array.isArray(list) ? list : []);
+      setRequests(Array.isArray(list) ? list.slice(0, 3) : []); // Show only top 3
     } catch (err) {
       console.error(err);
       setRequests([]);
@@ -79,12 +79,20 @@ const Dashboard = () => {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-3xl font-bold text-gray-800">My Blood Requests</h2>
-        <Link
-          to="/patient/request"
-          className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition shadow-md font-medium"
-        >
-          + New Request
-        </Link>
+        <div className="flex gap-3">
+          <Link
+            to="/patient/history"
+            className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition shadow-md font-medium"
+          >
+            View History
+          </Link>
+          <Link
+            to="/patient/request"
+            className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition shadow-md font-medium"
+          >
+            + New Request
+          </Link>
+        </div>
       </div>
 
       {/* Stats */}
@@ -113,7 +121,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Requests List */}
+      {/* Recent Requests List */}
       {requests.length === 0 ? (
         <div className="bg-white rounded-xl shadow-lg p-12 text-center">
           <div className="text-6xl mb-4">🩸</div>
@@ -128,6 +136,12 @@ const Dashboard = () => {
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-gray-800">Recent Requests (Top 3)</h3>
+            <Link to="/patient/history" className="text-red-600 hover:text-red-800 font-medium text-sm">
+              View All →
+            </Link>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-red-600 text-white">

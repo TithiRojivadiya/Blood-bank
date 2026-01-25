@@ -84,11 +84,14 @@ router.get('/:id', async (req, res) => {
   res.json({ ...data, donor_responses: responses || [] });
 });
 
-// POST /api/requests – Enhanced Instant Dispatch with inventory checking
-// Body: { hospital_id, blood_group, component, units_required, urgency, required_by?, reason, patient_id? }
+// POST /api/requests – Location-based: 10km hospitals or city, inventory first, then donors
+// Body: { request_latitude?, request_longitude?, request_city, blood_group, component, units_required, urgency, required_by?, reason, patient_id? }
+// hospital_id is chosen by backend: 10km then city; inventory checked first; donors only if no hospital has enough.
 router.post('/', async (req, res) => {
   const {
-    hospital_id,
+    request_latitude,
+    request_longitude,
+    request_city,
     blood_group,
     component,
     units_required,
@@ -98,40 +101,87 @@ router.post('/', async (req, res) => {
     patient_id,
   } = req.body;
 
-  if (!hospital_id || !blood_group || !component || !units_required || !urgency || !reason) {
+  if (!blood_group || !component || !units_required || !urgency || !reason) {
     return res.status(400).json({
-      error: 'hospital_id, blood_group, component, units_required, urgency, reason are required',
+      error: 'blood_group, component, units_required, urgency, reason are required',
+    });
+  }
+  const city = request_city ? String(request_city).trim() : null;
+  if (!city) {
+    return res.status(400).json({ error: 'request_city is required' });
+  }
+
+  const lat = request_latitude != null ? Number(request_latitude) : null;
+  const lng = request_longitude != null ? Number(request_longitude) : null;
+  const hasCoords = lat != null && lng != null && !isNaN(lat) && !isNaN(lng);
+  const uReq = Number(units_required);
+  const bg = String(blood_group).trim();
+  const comp = String(component).trim();
+  const urg = String(urgency).trim();
+
+  // 1) Get hospital list: within 10km if coords, else fallback to city; if 10km empty, use city
+  let hospitalList = [];
+  if (hasCoords) {
+    const { data: within10 } = await supabase.rpc('hospitals_within_10km', { p_lat: lat, p_lng: lng });
+    hospitalList = within10 || [];
+    if (hospitalList.length === 0) {
+      const { data: inCity } = await supabase.rpc('hospitals_in_city', { p_city: city });
+      hospitalList = inCity || [];
+    }
+  } else {
+    const { data: inCity } = await supabase.rpc('hospitals_in_city', { p_city: city });
+    hospitalList = inCity || [];
+  }
+
+  if (hospitalList.length === 0) {
+    return res.status(400).json({
+      error: 'No hospital found within 10 km or in your city. Please try a different location or city.',
     });
   }
 
-  // 1) Check inventory first - if available, fulfill immediately
-  const { data: inventory } = await supabase
-    .from('inventory')
-    .select('units_available')
-    .eq('hospital_id', Number(hospital_id))
-    .eq('blood_group', String(blood_group).trim())
-    .eq('component', String(component).trim())
-    .single();
+  // 2) Check each hospital's inventory; if any has enough, fulfill from that hospital and stop
+  let fulfillingHospital = null;
+  let availableUnits = 0;
+  for (const h of hospitalList) {
+    const { data: inv } = await supabase
+      .from('inventory')
+      .select('units_available')
+      .eq('hospital_id', h.id)
+      .eq('blood_group', bg)
+      .eq('component', comp)
+      .single();
+    const u = inv?.units_available || 0;
+    if (u >= uReq) {
+      fulfillingHospital = h;
+      availableUnits = u;
+      break;
+    }
+  }
 
-  const availableUnits = inventory?.units_available || 0;
-  const needsDonors = availableUnits < Number(units_required);
+  const needsDonors = !fulfillingHospital;
+  const assignedHospital = fulfillingHospital || hospitalList[0]; // pick first (or closest from 10km) when going to donors
 
-  // 2) Insert blood request
+  // 3) Insert blood request
+  const insertPayload = {
+    patient_id: patient_id || null,
+    hospital_id: assignedHospital.id,
+    blood_group: bg,
+    component: comp,
+    units_required: uReq,
+    urgency: urg,
+    required_by: required_by || null,
+    reason: String(reason).trim(),
+    request_latitude: hasCoords ? lat : null,
+    request_longitude: hasCoords ? lng : null,
+    request_city: city,
+    status: needsDonors ? 'pending' : 'fulfilled',
+    units_fulfilled: needsDonors ? 0 : uReq,
+    fulfilled_at: needsDonors ? null : new Date().toISOString(),
+  };
+
   const { data: request, error: errReq } = await supabase
     .from('blood_requests')
-    .insert({
-      patient_id: patient_id || null,
-      hospital_id: Number(hospital_id),
-      blood_group: String(blood_group).trim(),
-      component: String(component).trim(),
-      units_required: Number(units_required),
-      urgency: String(urgency).trim(),
-      required_by: required_by || null,
-      reason: String(reason).trim(),
-      status: needsDonors ? 'pending' : 'fulfilled',
-      units_fulfilled: needsDonors ? 0 : Number(units_required),
-      fulfilled_at: needsDonors ? null : new Date().toISOString(),
-    })
+    .insert(insertPayload)
     .select('id, hospital_id, blood_group, urgency, created_at, status')
     .single();
 
@@ -140,22 +190,21 @@ router.post('/', async (req, res) => {
   const donors = [];
   const notifs = [];
 
-  // 3) If inventory available, use it and update inventory
   if (!needsDonors) {
+    // 4a) Fulfill from inventory
     await supabase
       .from('inventory')
-      .update({ units_available: availableUnits - Number(units_required) })
-      .eq('hospital_id', Number(hospital_id))
-      .eq('blood_group', String(blood_group).trim())
-      .eq('component', String(component).trim());
+      .update({ units_available: availableUnits - uReq })
+      .eq('hospital_id', fulfillingHospital.id)
+      .eq('blood_group', bg)
+      .eq('component', comp);
 
     notifs.push({
-      recipient_key: `hospital_${hospital_id}`,
+      recipient_key: `hospital_${fulfillingHospital.id}`,
       title: '✅ Request Fulfilled from Inventory',
-      body: `${blood_group} ${component} request fulfilled from available inventory.`,
+      body: `${bg} ${comp} request fulfilled from available inventory.`,
       request_id: request.id,
     });
-
     if (patient_id) {
       notifs.push({
         recipient_key: `patient_${patient_id}`,
@@ -165,63 +214,65 @@ router.post('/', async (req, res) => {
       });
     }
   } else {
-    // 4) Smart Matching: donors within 5km
-    const { data: matchedDonors } = await supabase.rpc('match_donors_within_5km', {
-      p_hospital_id: Number(hospital_id),
-      p_blood_group: String(blood_group).trim(),
-    });
+    // 4b) Match donors: by point (5km) if coords, else by city
+    let matchedDonors = [];
+    if (hasCoords) {
+      const { data: m } = await supabase.rpc('match_donors_within_5km_of_point', {
+        p_lat: lat,
+        p_lng: lng,
+        p_blood_group: bg,
+      });
+      matchedDonors = m || [];
+    } else {
+      const { data: m } = await supabase.rpc('match_donors_in_city', { p_city: city, p_blood_group: bg });
+      matchedDonors = m || [];
+    }
+    donors.push(...matchedDonors);
 
-    donors.push(...(matchedDonors || []));
-
-    // 5) Notify each matched donor
-    const hospitalName = (await supabase.from('hospitals').select('name').eq('id', hospital_id).single()).data?.name || 'Nearby Hospital';
-    
+    const hospitalName = assignedHospital.name || 'Nearby Hospital';
     for (const d of donors) {
       notifs.push({
         recipient_key: `donor_${d.id}`,
-        title: urgency === 'Emergency' ? '🚨 URGENT: Emergency Blood Request' : '🩸 Blood Request',
-        body: `${blood_group} ${component} needed urgently - ${reason}. Hospital: ${hospitalName}. Please respond if you can help.`,
+        title: urg === 'Emergency' ? '🚨 URGENT: Emergency Blood Request' : '🩸 Blood Request',
+        body: `${bg} ${comp} needed - ${reason}. Hospital: ${hospitalName}. Please respond Available or Unavailable.`,
         request_id: request.id,
       });
-
-      // Create pending response record
-      await supabase
+      const { error: respErr } = await supabase
         .from('donor_responses')
-        .insert({
-          request_id: request.id,
-          donor_id: d.id,
-          response: 'pending',
-        })
-        .catch(() => {}); // Ignore if already exists
+        .insert({ request_id: request.id, donor_id: d.id, response: 'pending' });
+      if (respErr) console.warn('Donor response insert error:', respErr);
     }
 
-    // 6) Notify hospital
+    const invAtAssigned = (await supabase
+      .from('inventory')
+      .select('units_available')
+      .eq('hospital_id', assignedHospital.id)
+      .eq('blood_group', bg)
+      .eq('component', comp)
+      .single()).data?.units_available || 0;
+
     notifs.push({
-      recipient_key: `hospital_${hospital_id}`,
+      recipient_key: `hospital_${assignedHospital.id}`,
       title: 'New blood request',
-      body: `${blood_group} ${component}, ${units_required} unit(s) needed. ${donors.length} donor(s) notified within 5km. ${availableUnits > 0 ? `Inventory: ${availableUnits} units available.` : 'No inventory available.'}`,
+      body: `${bg} ${comp}, ${uReq} unit(s) needed. ${donors.length} donor(s) notified. ${invAtAssigned > 0 ? `Inventory: ${invAtAssigned} units.` : 'No inventory.'}`,
       request_id: request.id,
     });
-
-    // 7) Notify patient if known
     if (patient_id) {
       notifs.push({
         recipient_key: `patient_${patient_id}`,
         title: 'Request received',
-        body: `We're contacting ${donors.length} donor(s) within 5km. ${availableUnits > 0 ? `Hospital has ${availableUnits} units in inventory.` : 'Searching for donors...'}`,
+        body: `Hospitals checked; ${donors.length} donor(s) notified. ${invAtAssigned > 0 ? `Hospital has ${invAtAssigned} units.` : 'Searching for donors.'}`,
         request_id: request.id,
       });
     }
   }
 
   if (notifs.length > 0) {
-    const { error: errN } = await supabase.from('notifications').insert(notifs);
-    if (errN) {
-      console.warn('Notification insert error:', errN);
-    }
+    await supabase.from('notifications').insert(notifs).then(({ error: errN }) => {
+      if (errN) console.warn('Notification insert error:', errN);
+    });
   }
 
-  // Clear relevant caches
   clearCache('/api/requests');
   clearCache('/api/inventory');
   if (patient_id) clearCache(`/api/requests?patient_id=${patient_id}`);
@@ -230,7 +281,7 @@ router.post('/', async (req, res) => {
     request: { ...request, status: needsDonors ? 'pending' : 'fulfilled' },
     matchedDonors: donors,
     notificationCount: notifs.length,
-    inventoryAvailable: availableUnits,
+    inventoryAvailable: fulfillingHospital ? availableUnits : 0,
     fulfilledFromInventory: !needsDonors,
   });
 });

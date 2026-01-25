@@ -23,21 +23,26 @@ const BloodBankDashboard = lazy(() => import("../Components/Blood_bank/Dashboard
 const PatientProfile = lazy(() => import("../Components/Patient/Profile"));
 const PatientNotification = lazy(() => import("../Components/Patient/Notification"));
 const PatientRequest = lazy(() => import("../Components/Patient/Request"));
+const PatientHistory = lazy(() => import("../Components/Patient/History"));
 
 // Donor
 const DonorProfile = lazy(() => import("../Components/Donor/Profile"));
 const DonorNotification = lazy(() => import("../Components/Donor/Notification"));
+const DonorHistory = lazy(() => import("../Components/Donor/History"));
+const DonorDonate = lazy(() => import("../Components/Donor/Donate"));
 
 // Admin
 const AdminNotification = lazy(() => import("../Components/Admin/Notification"));
 const AdminDonors = lazy(() => import("../Components/Admin/Donors"));
 const AdminUsers = lazy(() => import("../Components/Admin/Users"));
 const AdminHospitals = lazy(() => import("../Components/Admin/Hospitals"));
+const AdminHistory = lazy(() => import("../Components/Admin/History"));
 
 // Blood Bank
 const BloodBankProfile = lazy(() => import("../Components/Blood_bank/Profile"));
 const BloodBankNotification = lazy(() => import("../Components/Blood_bank/Notification"));
 const BloodBankInventory = lazy(() => import("../Components/Blood_bank/Inventory"));
+const BloodBankHistory = lazy(() => import("../Components/Blood_bank/History"));
 
 const LoadingSpinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -62,6 +67,7 @@ const App = () => (
         <Route path="profile" element={<PatientProfile />} />
         <Route path="notification" element={<PatientNotification />} />
         <Route path="request" element={<PatientRequest />} />
+        <Route path="history" element={<PatientHistory />} />
       </Route>
 
       <Route path="/donor" element={<DonorNavBar />}>
@@ -69,6 +75,8 @@ const App = () => (
         <Route path="dashboard" element={<DonorDashboard />} />
         <Route path="profile" element={<DonorProfile />} />
         <Route path="notification" element={<DonorNotification />} />
+        <Route path="history" element={<DonorHistory />} />
+        <Route path="donate" element={<DonorDonate />} />
       </Route>
 
       <Route path="/admin" element={<AdminNavBar />}>
@@ -78,6 +86,7 @@ const App = () => (
         <Route path="donors" element={<AdminDonors />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="hospitals" element={<AdminHospitals />} />
+        <Route path="history" element={<AdminHistory />} />
       </Route>
 
       <Route path="/blood-bank" element={<BloodBankNavBar />}>
@@ -86,6 +95,7 @@ const App = () => (
         <Route path="inventory" element={<BloodBankInventory />} />
         <Route path="notification" element={<BloodBankNotification />} />
         <Route path="profile" element={<BloodBankProfile />} />
+        <Route path="history" element={<BloodBankHistory />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

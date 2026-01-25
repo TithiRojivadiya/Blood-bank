@@ -31,6 +31,7 @@ const AdminNavBar = () => {
           <NavLink to="donors" className={navClass}>Donors</NavLink>
           <NavLink to="users" className={navClass}>Users</NavLink>
           <NavLink to="hospitals" className={navClass}>Hospitals</NavLink>
+          <NavLink to="history" className={navClass}>History</NavLink>
         </div>
 
         <button

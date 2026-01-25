@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router";
 import AuthContext from "../../src/Context/AuthContext";
 
 
-const roles = ["Patient", "Donor", "Hospital", "Admin"];
+const roles = ["Patient", "Donor", "Hospital"];
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -61,9 +61,6 @@ const Signup = () => {
       return form.hospitalName && isEmailValid && isPhoneValid &&
              isPasswordValid && form.city && form.contactPerson;
 
-    if (role === "Admin")
-      return form.adminName && isEmailValid && isPasswordValid;
-
     return false;
   };
 
@@ -85,7 +82,6 @@ const Signup = () => {
       if (role === "Patient") navigate("/patient/dashboard");
       else if (role === "Donor") navigate("/donor/dashboard");
       else if (role === "Hospital") navigate("/blood-bank/dashboard");
-      else if (role === "Admin") navigate("/admin/dashboard");
       else navigate("/");
     } catch (e) {
       setErr(e.message || "Signup failed");
@@ -102,7 +98,7 @@ const Signup = () => {
         </h1>
 
         {/* Role Selection */}
-        <div className="grid grid-cols-4 gap-2 mt-6">
+        <div className="grid grid-cols-3 gap-2 mt-6">
           {roles.map((r) => (
             <button
               key={r}
@@ -170,13 +166,6 @@ const Signup = () => {
             </>
           )}
 
-          {role === "Admin" && (
-            <>
-              <Input name="adminName" placeholder="Admin Name" onChange={handleChange} />
-              <Input name="email" type="email" placeholder="Email" onChange={handleChange} />
-              <Input name="password" type="password" placeholder="Password" onChange={handleChange} />
-            </>
-          )}
 
           {err && <p className="text-red-600 text-sm">{err}</p>}
           <button

@@ -33,7 +33,7 @@ const Dashboard = () => {
         ? requestsJson
         : (requestsJson?.data ?? []);
       const requestsArray = Array.isArray(requestsList) ? requestsList : [];
-      setRequests(requestsArray.slice(0, 5));
+      setRequests(requestsArray.slice(0, 3)); // Show only top 3
       setInventorySummary(typeof summaryData === "object" && summaryData !== null ? summaryData : {});
 
       const totalUnits = Object.values(summaryData).reduce(
@@ -144,7 +144,12 @@ const Dashboard = () => {
 
       {/* Recent Requests */}
       <div className="bg-white rounded-xl shadow-lg p-6">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4">Recent Requests</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-semibold text-gray-800">Recent Requests</h3>
+          <Link to="/blood-bank/history" className="text-red-600 hover:text-red-800 font-medium text-sm">
+            View All History →
+          </Link>
+        </div>
         {requests.length === 0 ? (
           <p className="text-gray-500 text-center py-8">No requests yet.</p>
         ) : (

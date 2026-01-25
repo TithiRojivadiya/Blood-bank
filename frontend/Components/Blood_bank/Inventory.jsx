@@ -140,6 +140,46 @@ const Inventory = () => {
     return "text-green-600 bg-green-50";
   };
 
+  // Transform inventory into matrix format (blood groups as rows, components as columns)
+  const buildInventoryMatrix = () => {
+    const matrix = {};
+    const componentTotals = {};
+    
+    // Initialize component totals
+    components.forEach(comp => {
+      componentTotals[comp] = 0;
+    });
+
+    // Build matrix and calculate totals
+    bloodGroups.forEach(bg => {
+      matrix[bg] = {};
+      components.forEach(comp => {
+        const item = inventory.find(
+          inv => inv.blood_group === bg && inv.component === comp
+        );
+        const units = item ? item.units_available : 0;
+        matrix[bg][comp] = item || null; // Store the full item for edit/delete
+        componentTotals[comp] += units;
+      });
+    });
+
+    // Calculate row totals (blood group totals)
+    const rowTotals = {};
+    bloodGroups.forEach(bg => {
+      rowTotals[bg] = components.reduce((sum, comp) => {
+        const item = matrix[bg][comp];
+        return sum + (item ? item.units_available : 0);
+      }, 0);
+    });
+
+    // Calculate grand total
+    const grandTotal = Object.values(rowTotals).reduce((sum, total) => sum + total, 0);
+
+    return { matrix, componentTotals, rowTotals, grandTotal };
+  };
+
+  const { matrix, componentTotals, rowTotals, grandTotal } = buildInventoryMatrix();
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -263,65 +303,112 @@ const Inventory = () => {
         </div>
       )}
 
-      {/* Inventory Table */}
+      {/* Inventory Table - Tabular Format (Components as Columns, Blood Groups as Rows) */}
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full border-collapse">
             <thead className="bg-red-600 text-white">
               <tr>
-                <th className="px-6 py-4 text-left font-semibold">Blood Group</th>
-                <th className="px-6 py-4 text-left font-semibold">Component</th>
-                <th className="px-6 py-4 text-left font-semibold">Available</th>
-                <th className="px-6 py-4 text-left font-semibold">Reserved</th>
-                <th className="px-6 py-4 text-left font-semibold">Last Updated</th>
-                <th className="px-6 py-4 text-left font-semibold">Actions</th>
+                <th className="px-4 py-3 text-left font-semibold border border-red-700 sticky left-0 bg-red-600 z-10">
+                  Blood Group
+                </th>
+                {components.map((comp) => (
+                  <th key={comp} className="px-4 py-3 text-center font-semibold border border-red-700 min-w-[120px]">
+                    {comp}
+                  </th>
+                ))}
+                <th className="px-4 py-3 text-center font-semibold border border-red-700 bg-red-700 min-w-[100px]">
+                  Total
+                </th>
+                <th className="px-4 py-3 text-center font-semibold border border-red-700 bg-red-700 min-w-[120px]">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {inventory.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={components.length + 3} className="px-6 py-8 text-center text-gray-500">
                     No inventory items. Add your first item above.
                   </td>
                 </tr>
               ) : (
-                inventory.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-4 font-semibold text-gray-800">{item.blood_group}</td>
-                    <td className="px-6 py-4 text-gray-700">{item.component}</td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(
-                          item.units_available
-                        )}`}
-                      >
-                        {item.units_available}
-                      </span>
+                <>
+                  {bloodGroups.map((bg) => {
+                    const hasInventory = components.some(comp => matrix[bg][comp] !== null);
+                    return (
+                      <tr key={bg} className={`hover:bg-gray-50 transition ${!hasInventory ? 'opacity-50' : ''}`}>
+                        <td className="px-4 py-3 font-bold text-gray-800 border border-gray-200 sticky left-0 bg-white z-10">
+                          {bg}
+                        </td>
+                        {components.map((comp) => {
+                          const item = matrix[bg][comp];
+                          const units = item ? item.units_available : 0;
+                          return (
+                            <td
+                              key={`${bg}-${comp}`}
+                              className="px-4 py-3 text-center border border-gray-200"
+                            >
+                              {item ? (
+                                <span
+                                  className={`px-2 py-1 rounded text-sm font-semibold ${getStatusColor(units)}`}
+                                >
+                                  {units}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400 text-sm">-</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="px-4 py-3 text-center font-semibold text-gray-800 border border-gray-200 bg-gray-50">
+                          {rowTotals[bg]}
+                        </td>
+                        <td className="px-4 py-3 text-center border border-gray-200">
+                          {hasInventory && (
+                            <div className="flex gap-2 justify-center">
+                              {inventory
+                                .filter(inv => inv.blood_group === bg)
+                                .map((item) => (
+                                  <div key={item.id} className="flex gap-1">
+                                    <button
+                                      onClick={() => handleEdit(item)}
+                                      className="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 hover:bg-blue-50 rounded"
+                                      title="Edit"
+                                    >
+                                      ✏️
+                                    </button>
+                                    <button
+                                      onClick={() => handleDelete(item.id)}
+                                      className="text-red-600 hover:text-red-800 text-xs font-medium px-2 py-1 hover:bg-red-50 rounded"
+                                      title="Remove"
+                                    >
+                                      🗑️
+                                    </button>
+                                  </div>
+                                ))}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {/* Totals Row */}
+                  <tr className="bg-gray-100 font-bold">
+                    <td className="px-4 py-3 text-gray-800 border border-gray-300 sticky left-0 bg-gray-100 z-10">
+                      Total
                     </td>
-                    <td className="px-6 py-4 text-gray-700">{item.units_reserved || 0}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {item.last_updated
-                        ? new Date(item.last_updated).toLocaleString()
-                        : "Never"}
+                    {components.map((comp) => (
+                      <td key={`total-${comp}`} className="px-4 py-3 text-center text-gray-800 border border-gray-300">
+                        {componentTotals[comp]}
+                      </td>
+                    ))}
+                    <td className="px-4 py-3 text-center text-gray-800 border border-gray-300 bg-red-50">
+                      {grandTotal}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEdit(item)}
-                          className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          className="text-red-600 hover:text-red-800 font-medium text-sm"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
+                    <td className="px-4 py-3 border border-gray-300"></td>
                   </tr>
-                ))
+                </>
               )}
             </tbody>
           </table>
