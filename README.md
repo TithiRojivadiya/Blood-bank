@@ -1,4 +1,4 @@
-# Real-Time Blood Donation System
+# RedHope - Real-Time Blood Donation System
 
 A digital platform connecting blood donors, patients, hospitals, and blood banks during medical emergencies. Enables quick donor discovery, **5km geofencing (PostGIS)**, live availability, and instant notifications.
 
