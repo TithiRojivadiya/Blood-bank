@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext } from "react";
+import { Link } from "react-router";
 import { API_URL } from "../../src/lib/env";
 import AuthContext from "../../src/Context/AuthContext";
 import { supabase } from "../../src/lib/supabase";
@@ -19,30 +20,42 @@ const Inventory = () => {
   const hospitalId = user?.id;
 
   const fetchInventory = async () => {
-    if (!hospitalId) return;
+    if (!hospitalId) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
+      setError("");
       const [invRes, summaryRes] = await Promise.all([
         fetch(`${API_URL}/api/inventory/${hospitalId}`),
         fetch(`${API_URL}/api/inventory/${hospitalId}/summary`),
       ]);
-      const invData = await invRes.json();
-      const summaryData = await summaryRes.json();
-      setInventory(invData || []);
-      setSummary(summaryData || {});
+      const invRaw = await invRes.json().catch(() => []);
+      const summaryRaw = await summaryRes.json().catch(() => ({}));
+      const invList = Array.isArray(invRaw) ? invRaw : [];
+      const summaryObj = typeof summaryRaw === "object" && summaryRaw !== null ? summaryRaw : {};
+      setInventory(invList);
+      setSummary(summaryObj);
     } catch (err) {
       setError("Failed to load inventory");
       console.error(err);
+      setInventory([]);
+      setSummary({});
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    if (!hospitalId) {
+      setLoading(false);
+      return;
+    }
     fetchInventory();
   }, [hospitalId]);
 
-  // Real-time updates
+  // Real-time updates (only when Supabase is configured)
   useEffect(() => {
     if (!hospitalId || !supabase) return;
     const channel = supabase
@@ -71,18 +84,27 @@ const Inventory = () => {
     }
     try {
       setError("");
-      const res = await fetch(`${API_URL}/api/inventory`, {
+      const units = Number(formData.units_available) || 0;
+      const url = editing
+        ? `${API_URL}/api/inventory/${editing.id}`
+        : `${API_URL}/api/inventory`;
+      const body = editing
+        ? { units_available: units }
+        : {
+            hospital_id: hospitalId,
+            blood_group: formData.blood_group,
+            component: formData.component,
+            units_available: units,
+          };
+      const res = await fetch(url, {
         method: editing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...(editing ? { id: editing.id } : {}),
-          hospital_id: hospitalId,
-          blood_group: formData.blood_group,
-          component: formData.component,
-          units_available: Number(formData.units_available),
-        }),
+        body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error("Failed to save");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to save");
+      }
       await fetchInventory();
       setEditing(null);
       setShowAddForm(false);
@@ -126,6 +148,24 @@ const Inventory = () => {
     );
   }
 
+  if (!user?.id) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto">
+        <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+          <div className="text-6xl mb-4">🩸</div>
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">Please log in</h3>
+          <p className="text-gray-600 mb-6">Sign in as a hospital or blood bank to manage inventory.</p>
+          <Link
+            to="/login"
+            className="inline-block bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition font-medium"
+          >
+            Go to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
@@ -151,12 +191,13 @@ const Inventory = () => {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {bloodGroups.map((bg) => {
-          const total = summary[bg]?.total || 0;
+          const total = summary[bg]?.total ?? 0;
+          const statusClasses = getStatusColor(total);
           return (
             <div key={bg} className="bg-white rounded-xl shadow-md p-4 border-l-4 border-red-500">
               <div className="flex justify-between items-center">
                 <span className="text-lg font-semibold text-gray-700">{bg}</span>
-                <span className={`text-2xl font-bold ${getStatusColor(total).split(" ")[0]}`}>
+                <span className={`text-2xl font-bold px-2 py-0.5 rounded ${statusClasses}`}>
                   {total}
                 </span>
               </div>

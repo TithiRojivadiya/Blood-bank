@@ -43,8 +43,10 @@ export const AuthProvider = ({ children }) => {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Login failed");
-    const u = { id: data.user.id, email: data.user.email, role: roleIn };
-    persist(u, data.recipient_key, roleIn);
+    const usr = data.user;
+    if (!usr || !usr.id) throw new Error("Invalid login response");
+    const u = { id: usr.id, email: usr.email, role: roleIn };
+    persist(u, data.recipient_key ?? `${roleIn.toLowerCase()}_${usr.id}`, roleIn);
   };
 
   const signup = async (roleIn, body) => {

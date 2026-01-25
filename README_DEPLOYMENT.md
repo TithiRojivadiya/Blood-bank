@@ -12,7 +12,10 @@
    - Go to **Database → Extensions** → Enable `postgis`
    - Go to **SQL Editor** → Run `supabase/migrations/0001_initial_postgis_schema.sql`
    - Run `supabase/migrations/0002_inventory_and_dispatch.sql`
+   - Run `supabase/migrations/0003_performance_indexes.sql` (optional)
    - (Optional) Run `supabase/seed_hospitals.sql` with your region's coordinates
+
+   **If you see "Could not find the 'fulfilled_at' column of 'blood_requests'"** when dispatching a request, run `supabase/migrations/0004_blood_requests_fulfillment_columns.sql` in the SQL Editor. This adds the missing columns.
 
 2. Enable Realtime:
    - Go to **Database → Replication**

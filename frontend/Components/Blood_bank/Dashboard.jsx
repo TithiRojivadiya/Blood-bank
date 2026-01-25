@@ -11,9 +11,12 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
     fetchData();
-  }, [user]);
+  }, [user?.id]);
 
   const fetchData = async () => {
     try {
@@ -23,24 +26,30 @@ const Dashboard = () => {
         fetch(`${API_URL}/api/inventory/${user.id}/summary`),
       ]);
 
-      const requestsData = await requestsRes.json();
-      const summaryData = await summaryRes.json();
+      const requestsJson = await requestsRes.json().catch(() => ({}));
+      const summaryData = await summaryRes.json().catch(() => ({}));
 
-      setRequests(requestsData.slice(0, 5));
-      setInventorySummary(summaryData);
+      const requestsList = Array.isArray(requestsJson)
+        ? requestsJson
+        : (requestsJson?.data ?? []);
+      const requestsArray = Array.isArray(requestsList) ? requestsList : [];
+      setRequests(requestsArray.slice(0, 5));
+      setInventorySummary(typeof summaryData === "object" && summaryData !== null ? summaryData : {});
 
       const totalUnits = Object.values(summaryData).reduce(
-        (sum, bg) => sum + (bg.total || 0),
+        (sum, bg) => sum + (bg?.total ?? 0),
         0
       );
 
       setStats({
-        pending: requestsData.filter((r) => r.status === "pending").length,
-        fulfilled: requestsData.filter((r) => r.status === "fulfilled").length,
+        pending: requestsArray.filter((r) => r?.status === "pending").length,
+        fulfilled: requestsArray.filter((r) => r?.status === "fulfilled").length,
         totalUnits,
       });
     } catch (err) {
       console.error(err);
+      setRequests([]);
+      setInventorySummary({});
     } finally {
       setLoading(false);
     }
@@ -50,6 +59,24 @@ const Dashboard = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+      </div>
+    );
+  }
+
+  if (!user?.id) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto">
+        <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+          <div className="text-6xl mb-4">🩸</div>
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">Please log in</h3>
+          <p className="text-gray-600 mb-6">Sign in as a hospital or blood bank to manage inventory and requests.</p>
+          <Link
+            to="/login"
+            className="inline-block bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition font-medium"
+          >
+            Go to Login
+          </Link>
+        </div>
       </div>
     );
   }

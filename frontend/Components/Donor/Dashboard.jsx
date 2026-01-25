@@ -11,9 +11,12 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
     fetchData();
-  }, [user]);
+  }, [user?.id]);
 
   const fetchData = async () => {
     try {
@@ -23,10 +26,18 @@ const Dashboard = () => {
         fetch(`${API_URL}/api/donations/donor/${user.id}`),
       ]);
 
-      const responses = await responsesRes.json();
-      const donations = await donationsRes.json();
+      const responsesRaw = await responsesRes.json().catch(() => []);
+      const donationsRaw = await donationsRes.json().catch(() => []);
 
-      const pending = responses.filter((r) => r.response === "pending" && r.blood_requests?.status === "pending");
+      const responses = Array.isArray(responsesRaw) ? responsesRaw : [];
+      const donations = Array.isArray(donationsRaw) ? donationsRaw : [];
+
+      const pending = responses.filter(
+        (r) =>
+          r?.response === "pending" &&
+          r?.blood_requests?.status === "pending" &&
+          r?.blood_requests != null
+      );
       setActiveRequests(pending);
       setDonationHistory(donations.slice(0, 5));
       setStats({
@@ -36,6 +47,8 @@ const Dashboard = () => {
       });
     } catch (err) {
       console.error(err);
+      setActiveRequests([]);
+      setDonationHistory([]);
     } finally {
       setLoading(false);
     }
@@ -62,6 +75,24 @@ const Dashboard = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+      </div>
+    );
+  }
+
+  if (!user?.id) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto">
+        <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+          <div className="text-6xl mb-4">🩸</div>
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">Please log in</h3>
+          <p className="text-gray-600 mb-6">Sign in as a donor to view active requests and your donation history.</p>
+          <Link
+            to="/login"
+            className="inline-block bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition font-medium"
+          >
+            Go to Login
+          </Link>
+        </div>
       </div>
     );
   }
@@ -101,7 +132,9 @@ const Dashboard = () => {
         ) : (
           <div className="space-y-4">
             {activeRequests.map((item) => {
-              const request = item.blood_requests;
+              const request = item?.blood_requests;
+              if (!request?.id) return null;
+              const hospital = typeof request?.hospitals === "object" ? request.hospitals : null;
               return (
                 <div
                   key={item.id}
@@ -109,35 +142,35 @@ const Dashboard = () => {
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-2xl font-bold text-red-600">{request?.blood_group}</span>
-                        <span className="text-gray-700">{request?.component}</span>
+                      <div className="flex items-center gap-3 mb-2 flex-wrap">
+                        <span className="text-2xl font-bold text-red-600">{request.blood_group ?? "—"}</span>
+                        <span className="text-gray-700">{request.component ?? "—"}</span>
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            request?.urgency === "Emergency"
+                            request.urgency === "Emergency"
                               ? "bg-red-100 text-red-700"
-                              : request?.urgency === "Urgent"
+                              : request.urgency === "Urgent"
                               ? "bg-orange-100 text-orange-700"
                               : "bg-blue-100 text-blue-700"
                           }`}
                         >
-                          {request?.urgency}
+                          {request.urgency ?? "Normal"}
                         </span>
                       </div>
-                      <p className="text-gray-600 mb-2">{request?.reason}</p>
+                      <p className="text-gray-600 mb-2">{request.reason ?? ""}</p>
                       <p className="text-sm text-gray-500">
-                        {request?.hospitals?.name} • {request?.hospitals?.city} • {request?.units_required} units
+                        {hospital?.name ?? "—"} • {hospital?.city ?? "—"} • {request.units_required ?? 0} units
                       </p>
                     </div>
-                    <div className="flex gap-2 ml-4">
+                    <div className="flex gap-2 ml-4 flex-shrink-0">
                       <button
-                        onClick={() => handleResponse(request?.id, "accepted")}
+                        onClick={() => handleResponse(request.id, "accepted")}
                         className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium"
                       >
                         Accept
                       </button>
                       <button
-                        onClick={() => handleResponse(request?.id, "declined")}
+                        onClick={() => handleResponse(request.id, "declined")}
                         className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition text-sm font-medium"
                       >
                         Decline
@@ -178,7 +211,7 @@ const Dashboard = () => {
                     <td className="px-4 py-3 text-sm text-gray-700">{donation.component}</td>
                     <td className="px-4 py-3 text-sm text-gray-700">{donation.units}</td>
                     <td className="px-4 py-3 text-sm text-gray-700">
-                      {donation.hospitals?.name || "N/A"}
+                      {(typeof donation.hospitals === "object" && donation.hospitals?.name) || "N/A"}
                     </td>
                   </tr>
                 ))}

@@ -57,11 +57,12 @@ const Login = () => {
     setLoading(true);
     try {
       await login(formData.role, formData.email, formData.password);
-      if (formData.role === "ADMIN") navigate("/admin/dashboard");
-      else if (formData.role === "DONOR") navigate("/donor/dashboard");
-      else if (formData.role === "PATIENT") navigate("/patient/dashboard");
-      else if (formData.role === "HOSPITAL") navigate("/blood-bank/dashboard");
-      else navigate("/");
+      const role = String(formData.role || "").toUpperCase();
+      if (role === "ADMIN") navigate("/admin/dashboard", { replace: true });
+      else if (role === "DONOR") navigate("/donor/dashboard", { replace: true });
+      else if (role === "PATIENT") navigate("/patient/dashboard", { replace: true });
+      else if (role === "HOSPITAL") navigate("/blood-bank/dashboard", { replace: true });
+      else navigate("/", { replace: true });
     } catch (e) {
       setErr(e.message || "Login failed");
     } finally {
@@ -175,6 +176,14 @@ const Login = () => {
           >
             Create one
           </Link>
+        </p>
+
+        <p className="text-center text-xs text-gray-500 mt-4">
+          <Link to="/" className="text-gray-500 hover:text-gray-700">← Back to home</Link>
+        </p>
+
+        <p className="text-center text-xs text-gray-400 mt-3">
+          Demo: Hospital / Blood Bank uses password <code className="bg-gray-100 px-1 rounded">changeme</code>
         </p>
       </div>
     </div>

@@ -16,7 +16,10 @@ export default function NotificationList() {
     }
     fetch(`${API_URL}/api/notifications/${encodeURIComponent(recipientKey)}`)
       .then((r) => r.json())
-      .then(setList)
+      .then((json) => {
+        const arr = Array.isArray(json) ? json : (json?.data ?? []);
+        setList(Array.isArray(arr) ? arr : []);
+      })
       .catch(() => setList([]))
       .finally(() => setLoading(false));
   };

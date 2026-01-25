@@ -1,10 +1,14 @@
+import { useContext } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
+import AuthContext from "../../src/Context/AuthContext";
 
 const BloodBankNavBar = () => {
   const navigate = useNavigate();
+  const { logout } = useContext(AuthContext);
 
   const handleLogout = () => {
-    navigate("/");
+    logout();
+    navigate("/login", { replace: true });
   };
 
   const navClass = ({ isActive }) =>

@@ -9,18 +9,27 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
     fetchRequests();
-  }, [user]);
+  }, [user?.id]);
 
   const fetchRequests = async () => {
     try {
       setLoading(true);
       const res = await fetch(`${API_URL}/api/requests?patient_id=${user.id}`);
-      const data = await res.json();
-      setRequests(data || []);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setRequests([]);
+        return;
+      }
+      const list = Array.isArray(json) ? json : (json?.data ?? []);
+      setRequests(Array.isArray(list) ? list : []);
     } catch (err) {
       console.error(err);
+      setRequests([]);
     } finally {
       setLoading(false);
     }
@@ -44,6 +53,24 @@ const Dashboard = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+      </div>
+    );
+  }
+
+  if (!user?.id) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto">
+        <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+          <div className="text-6xl mb-4">🩸</div>
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">Please log in</h3>
+          <p className="text-gray-600 mb-6">Sign in as a patient to view and manage your blood requests.</p>
+          <Link
+            to="/login"
+            className="inline-block bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition font-medium"
+          >
+            Go to Login
+          </Link>
+        </div>
       </div>
     );
   }
@@ -125,7 +152,7 @@ const Dashboard = () => {
                       {request.units_fulfilled || 0} / {request.units_required}
                     </td>
                     <td className="px-6 py-4 text-gray-700">
-                      {request.hospitals?.name || "N/A"}
+                      {(typeof request.hospitals === "object" && request.hospitals?.name) || "N/A"}
                     </td>
                     <td className="px-6 py-4">
                       <span
