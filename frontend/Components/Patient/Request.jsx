@@ -69,13 +69,6 @@ const Request = () => {
     }
   };
 
-  // Fetch suggestions when location changes
-  const handleLocationChange = () => {
-    if (myLocation && formData.bloodGroup && formData.component && formData.unitsRequired) {
-      fetchSuggestions();
-    }
-  };
-
   const getMyLocation = () => {
     setLocationError("");
     setLocationLoading(true);
@@ -178,7 +171,7 @@ const Request = () => {
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-red-600 mb-2">🩸 Blood Request Form</h2>
             <p className="text-gray-600">
-              Hospitals within 10 km are notified first; if none have enough, we notify donors. Enter location or use yours.
+              We notify hospitals within 10 km first. If a hospital has enough blood, it must approve before you’re notified as fulfilled. If no hospital has enough, we notify matching donors in your city.
             </p>
           </div>
 
@@ -194,17 +187,17 @@ const Request = () => {
               <h3 className="text-xl font-bold text-green-700 mb-4 flex items-center gap-2">
                 <span>✅</span> Request Created & Dispatched
               </h3>
-              {result.fulfilledFromInventory ? (
+              {result.awaitingHospitalApproval ? (
                 <div className="space-y-2">
                   <p className="text-green-700">
-                    <strong>✅ Fulfilled from Inventory!</strong> Your request has been fulfilled from available hospital inventory.
+                    <strong>⏳ Waiting for Hospital Approval</strong> A nearby hospital has enough inventory. The hospital must approve before status becomes fulfilled.
                   </p>
                   <p className="text-sm text-green-600">Inventory available: {result.inventoryAvailable} units</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   <p className="text-green-700">
-                    <strong>Matched donors (5km or city):</strong> {result.matchedDonors?.length ?? 0}
+                    <strong>Donors notified (same city):</strong> {result.matchedDonors?.length ?? 0}
                   </p>
                   <p className="text-green-700">
                     <strong>Notifications sent:</strong> {result.notificationCount ?? 0}
@@ -221,7 +214,6 @@ const Request = () => {
                         {result.matchedDonors.slice(0, 5).map((d) => (
                           <li key={d.id}>
                             {d.full_name} – {d.blood_group}
-                            {d.distance_meters != null ? ` (${(d.distance_meters / 1000).toFixed(2)} km away)` : ""}
                           </li>
                         ))}
                         {result.matchedDonors.length > 5 && <li>… and {result.matchedDonors.length - 5} more donors</li>}

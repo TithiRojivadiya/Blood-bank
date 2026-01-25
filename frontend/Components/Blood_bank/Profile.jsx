@@ -16,7 +16,11 @@ const Profile = () => {
   });
 
   useEffect(() => {
-    if (!user?.id || user?.role !== "HOSPITAL") return;
+    if (!user?.id || user?.role !== "HOSPITAL") {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     fetch(`${API_URL}/api/profile?role=HOSPITAL&id=${user.id}`)
       .then((r) => r.json())
       .then((d) =>

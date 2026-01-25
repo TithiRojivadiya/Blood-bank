@@ -48,24 +48,12 @@ export default function NotificationList() {
       .then(() => setList((prev) => prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n))));
   };
 
-  // Donor: Donate button - uses hospital from request
+  // Donor: Donate button (accept). Backend handles status + notifications.
   const handleDonate = async (requestId, notificationId) => {
     if (!user?.id || user?.role !== "DONOR") return;
     setResponding((s) => ({ ...s, [requestId]: true }));
     try {
-      // Get request details with hospital information
-      const reqRes = await fetch(`${API_URL}/api/requests/${requestId}`);
-      const requestData = await reqRes.json().catch(() => ({}));
-      if (!reqRes.ok) throw new Error("Failed to get request details");
-
-      // Use hospital from the request (assigned by patient's location)
-      // Hospital data comes as nested object from Supabase relation
-      const hospitalData = requestData.hospitals;
-      if (!hospitalData || !hospitalData.id) {
-        throw new Error("Hospital information not found in request. Please contact support.");
-      }
-
-      // Create donor response
+      // Create donor response (backend also updates request status and sends notifications)
       const res = await fetch(`${API_URL}/api/donor-responses`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -78,66 +66,6 @@ export default function NotificationList() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Failed to create donor response");
 
-      // Update inventory (add 1 unit using adjust endpoint)
-      const invRes = await fetch(`${API_URL}/api/inventory/adjust`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          hospital_id: hospitalData.id,
-          blood_group: requestData.blood_group,
-          component: requestData.component,
-          units_change: 1,
-          operation: "add",
-        }),
-      });
-      if (!invRes.ok) console.warn("Failed to update inventory");
-
-      // Build hospital details message for donor
-      const hospitalDetails = [
-        `🏥 Hospital: ${hospitalData.name || "Hospital"}`,
-        `📍 Location: ${hospitalData.city || "N/A"}`,
-        hospitalData.phone ? `📞 Phone: ${hospitalData.phone}` : "",
-        hospitalData.contact_person ? `👤 Contact Person: ${hospitalData.contact_person}` : "",
-        `🩸 Blood Required: ${requestData.blood_group} ${requestData.component}`,
-        `📋 Request ID: #${requestId}`,
-      ].filter(Boolean).join("\n");
-
-      // Notify donor with hospital details
-      await fetch(`${API_URL}/api/notifications`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recipient_key: `donor_${user.id}`,
-          title: "✅ Donation Confirmed - Hospital Details",
-          body: `Thank you for accepting! Please visit the following hospital to donate:\n\n${hospitalDetails}\n\nPlease contact the hospital before visiting.`,
-          request_id: requestId,
-        }),
-      }).catch(() => {});
-
-      // Notify hospital
-      await fetch(`${API_URL}/api/notifications`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recipient_key: `hospital_${hospitalData.id}`,
-          title: "🩸 Donor Ready to Donate",
-          body: `Donor ${user.full_name || user.email} is ready to donate ${requestData.blood_group} ${requestData.component} for request #${requestId}.`,
-          request_id: requestId,
-        }),
-      }).catch(() => {});
-
-      // Notify patient
-      await fetch(`${API_URL}/api/notifications`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recipient_key: requestData.patient_id ? `patient_${requestData.patient_id}` : null,
-          title: "✅ Blood Available",
-          body: `A donor is ready to donate. Blood will be available at ${hospitalData.name || "the hospital"}. Please contact the hospital.`,
-          request_id: requestId,
-        }),
-      }).catch(() => {});
-
       // Mark notification as read
       await fetch(`${API_URL}/api/notifications/${notificationId}/read`, { method: "PATCH" });
       setList((prev) => prev.map((nn) => (nn.id === notificationId ? { ...nn, read_at: new Date().toISOString(), _donorResponded: "Donated" } : nn)));
@@ -148,7 +76,47 @@ export default function NotificationList() {
     }
   };
 
-  const isDonorRequest = (n) => user?.role === "DONOR" && n.request_id && !n._donorResponded;
+  const handleHospitalApprove = async (requestId, notificationId) => {
+    if (!user?.id || user?.role !== "HOSPITAL") return;
+    setResponding((s) => ({ ...s, [`approve_${requestId}`]: true }));
+    try {
+      const res = await fetch(`${API_URL}/api/requests/${requestId}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hospital_id: user.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to approve request");
+
+      await fetch(`${API_URL}/api/notifications/${notificationId}/read`, { method: "PATCH" });
+      setList((prev) =>
+        prev.map((nn) =>
+          nn.id === notificationId ? { ...nn, read_at: new Date().toISOString(), _hospitalResponded: "Approved" } : nn
+        )
+      );
+    } catch (e) {
+      alert(e.message || "Failed to approve");
+    } finally {
+      setResponding((s) => ({ ...s, [`approve_${requestId}`]: false }));
+    }
+  };
+
+  // Only show Donate button for "blood needed/request" notifications, not for follow-up
+  // messages like "Where to donate" / "Thank you".
+  const isDonorRequest = (n) => {
+    if (user?.role !== "DONOR") return false;
+    if (!n?.request_id || n._donorResponded) return false;
+    const title = String(n.title || "").toLowerCase();
+    if (!/(blood request|blood needed|urgent)/.test(title)) return false;
+    if (/(where to donate|donation accepted|donation confirmed|thank)/.test(title)) return false;
+    return true;
+  };
+  const isHospitalApproval = (n) =>
+    user?.role === "HOSPITAL" &&
+    n.request_id &&
+    !n._hospitalResponded &&
+    typeof n.title === "string" &&
+    n.title.toLowerCase().includes("approval needed");
 
   if (!recipientKey) {
     return <p className="text-gray-600">Log in to see your notifications.</p>;
@@ -162,7 +130,7 @@ export default function NotificationList() {
         <div
           key={n.id}
           className={`p-5 rounded-xl border-2 transition-all hover:shadow-lg ${
-            n.read_at || n._donorResponded
+            n.read_at || n._donorResponded || n._hospitalResponded
               ? "bg-white border-gray-200 opacity-75"
               : "bg-gradient-to-r from-red-50 to-pink-50 border-red-300 shadow-md"
           }`}
@@ -181,8 +149,13 @@ export default function NotificationList() {
                     {n._donorResponded}
                   </span>
                 )}
+                {n._hospitalResponded && (
+                  <span className="px-2 py-0.5 bg-gray-500 text-white text-xs font-semibold rounded-full">
+                    {n._hospitalResponded}
+                  </span>
+                )}
               </div>
-              <p className={`text-sm mt-2 ${n.read_at || n._donorResponded ? "text-gray-600" : "text-gray-800"}`}>
+              <p className={`text-sm mt-2 ${n.read_at || n._donorResponded || n._hospitalResponded ? "text-gray-600" : "text-gray-800"}`}>
                 {n.body}
               </p>
               <div className="flex items-center gap-4 mt-3">
@@ -193,7 +166,16 @@ export default function NotificationList() {
               </div>
             </div>
             {!n.read_at && !n._donorResponded && (
-              isDonorRequest(n) ? (
+              isHospitalApproval(n) ? (
+                <button
+                  type="button"
+                  disabled={responding[`approve_${n.request_id}`]}
+                  onClick={() => handleHospitalApprove(n.request_id, n.id)}
+                  className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition whitespace-nowrap disabled:opacity-50"
+                >
+                  {responding[`approve_${n.request_id}`] ? "Approving..." : "Approve"}
+                </button>
+              ) : isDonorRequest(n) ? (
                 <button
                   type="button"
                   disabled={responding[n.request_id]}

@@ -9,7 +9,11 @@ const Profile = () => {
   const [profileData, setProfileData] = useState({ full_name: "", email: "", phone: "", city: "" });
 
   useEffect(() => {
-    if (!user?.id || user?.role !== "PATIENT") return;
+    if (!user?.id || user?.role !== "PATIENT") {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     fetch(`${API_URL}/api/profile?role=PATIENT&id=${user.id}`)
       .then((r) => r.json())
       .then((d) =>

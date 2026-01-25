@@ -93,7 +93,7 @@ router.post('/', async (req, res) => {
         updates.status = 'fulfilled';
         updates.fulfilled_at = new Date().toISOString();
       } else {
-        updates.status = 'partially_fulfilled';
+        updates.status = 'partial';
       }
 
       await supabase

@@ -41,6 +41,7 @@ const Dashboard = () => {
     const styles = {
       pending: "bg-yellow-100 text-yellow-700",
       fulfilled: "bg-green-100 text-green-700",
+      partial: "bg-blue-100 text-blue-700",
       partially_fulfilled: "bg-blue-100 text-blue-700",
       cancelled: "bg-red-100 text-red-700",
     };
@@ -118,7 +119,7 @@ const Dashboard = () => {
         <div className="bg-white rounded-lg shadow p-4 border-l-4 border-orange-500">
           <div className="text-sm text-gray-600 mb-1">Partial</div>
           <div className="text-2xl font-bold text-gray-800">
-            {requests.filter((r) => r.status === "partially_fulfilled").length}
+            {requests.filter((r) => r.status === "partial" || r.status === "partially_fulfilled").length}
           </div>
         </div>
       </div>

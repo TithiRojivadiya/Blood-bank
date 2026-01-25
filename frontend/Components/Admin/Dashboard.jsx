@@ -19,20 +19,22 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
+  const asArray = (json) => (Array.isArray(json) ? json : (json?.data ?? []));
+
   const fetchData = async () => {
     try {
       setLoading(true);
       const [donorsRes, patientsRes, hospitalsRes, requestsRes] = await Promise.all([
-        fetch(`${API_URL}/api/admin/donors`).catch(() => ({ json: () => [] })),
-        fetch(`${API_URL}/api/admin/patients`).catch(() => ({ json: () => [] })),
-        fetch(`${API_URL}/api/hospitals`),
+        fetch(`${API_URL}/api/profile?role=DONOR`).catch(() => ({ json: () => [] })),
+        fetch(`${API_URL}/api/profile?role=PATIENT`).catch(() => ({ json: () => [] })),
+        fetch(`${API_URL}/api/profile?role=HOSPITAL`).catch(() => ({ json: () => [] })),
         fetch(`${API_URL}/api/requests`),
       ]);
 
-      const donors = await donorsRes.json();
-      const patients = await patientsRes.json();
-      const hospitals = await hospitalsRes.json();
-      const requests = await requestsRes.json();
+      const donors = asArray(await donorsRes.json().catch(() => []));
+      const patients = asArray(await patientsRes.json().catch(() => []));
+      const hospitals = asArray(await hospitalsRes.json().catch(() => []));
+      const requests = asArray(await requestsRes.json().catch(() => []));
 
       setStats({
         totalDonors: donors.length || 0,

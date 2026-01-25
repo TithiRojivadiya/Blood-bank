@@ -6,16 +6,25 @@ const DonorHistory = () => {
   const { user } = useContext(AuthContext);
   const [data, setData] = useState({ responses: [], donations: [] });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!user?.id) {
       setLoading(false);
       return;
     }
+    setLoading(true);
+    setError("");
     fetch(`${API_URL}/api/history?role=DONOR&id=${user.id}`)
-      .then((r) => r.json())
-      .then((d) => setData({ responses: d?.responses || [], donations: d?.donations || [] }))
-      .catch(() => setData({ responses: [], donations: [] }))
+      .then(async (r) => {
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d?.error || "Failed to load history");
+        setData({ responses: d?.responses || [], donations: d?.donations || [] });
+      })
+      .catch((e) => {
+        setData({ responses: [], donations: [] });
+        setError(e?.message || "Failed to load history");
+      })
       .finally(() => setLoading(false));
   }, [user?.id]);
 
@@ -33,6 +42,12 @@ const DonorHistory = () => {
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8">
       <h2 className="text-2xl font-bold text-gray-800">Donor History</h2>
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg">
+          <p className="font-semibold">Error</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
 
       {/* Request responses */}
       <div>

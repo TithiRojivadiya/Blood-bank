@@ -9,8 +9,9 @@ const Dashboard = () => {
   usePageTitle();
   const [requests, setRequests] = useState([]);
   const [inventorySummary, setInventorySummary] = useState({});
-  const [stats, setStats] = useState({ pending: 0, fulfilled: 0, totalUnits: 0 });
+  const [stats, setStats] = useState({ pending: 0, partial: 0, fulfilled: 0, totalUnits: 0 });
   const [loading, setLoading] = useState(true);
+  const [approving, setApproving] = useState({});
 
   useEffect(() => {
     if (!user?.id) {
@@ -35,7 +36,7 @@ const Dashboard = () => {
         ? requestsJson
         : (requestsJson?.data ?? []);
       const requestsArray = Array.isArray(requestsList) ? requestsList : [];
-      setRequests(requestsArray.slice(0, 3)); // Show only top 3
+      setRequests(requestsArray);
       setInventorySummary(typeof summaryData === "object" && summaryData !== null ? summaryData : {});
 
       const totalUnits = Object.values(summaryData).reduce(
@@ -45,6 +46,7 @@ const Dashboard = () => {
 
       setStats({
         pending: requestsArray.filter((r) => r?.status === "pending").length,
+        partial: requestsArray.filter((r) => r?.status === "partial" || r?.status === "partially_fulfilled").length,
         fulfilled: requestsArray.filter((r) => r?.status === "fulfilled").length,
         totalUnits,
       });
@@ -54,6 +56,31 @@ const Dashboard = () => {
       setInventorySummary({});
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getAvailableUnits = (bloodGroup, component) => {
+    const bg = inventorySummary?.[bloodGroup];
+    const available = bg?.byComponent?.[component]?.available;
+    return Number.isFinite(available) ? available : 0;
+  };
+
+  const approveRequest = async (requestId) => {
+    if (!user?.id) return;
+    setApproving((s) => ({ ...s, [requestId]: true }));
+    try {
+      const res = await fetch(`${API_URL}/api/requests/${requestId}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hospital_id: user.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to approve request");
+      await fetchData();
+    } catch (e) {
+      alert(e.message || "Failed to approve");
+    } finally {
+      setApproving((s) => ({ ...s, [requestId]: false }));
     }
   };
 
@@ -83,12 +110,15 @@ const Dashboard = () => {
     );
   }
 
+  const pendingApprovals = (requests || []).filter((r) => r?.status === "pending");
+  const recentRequests = (requests || []).slice(0, 3);
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <h2 className="text-3xl font-bold text-gray-800 mb-6">Blood Bank Dashboard</h2>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
         <div className="bg-gradient-to-br from-red-500 to-red-600 text-white rounded-xl shadow-lg p-6">
           <div className="text-sm opacity-90 mb-2">Total Inventory</div>
           <div className="text-4xl font-bold">{stats.totalUnits}</div>
@@ -97,6 +127,10 @@ const Dashboard = () => {
         <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white rounded-xl shadow-lg p-6">
           <div className="text-sm opacity-90 mb-2">Pending Requests</div>
           <div className="text-4xl font-bold">{stats.pending}</div>
+        </div>
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl shadow-lg p-6">
+          <div className="text-sm opacity-90 mb-2">Partial</div>
+          <div className="text-4xl font-bold">{stats.partial}</div>
         </div>
         <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl shadow-lg p-6">
           <div className="text-sm opacity-90 mb-2">Fulfilled</div>
@@ -144,6 +178,64 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* Pending approvals */}
+      <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-semibold text-gray-800">Pending Approvals</h3>
+          <Link to="/blood-bank/notification" className="text-red-600 hover:text-red-800 font-medium text-sm">
+            View Notifications →
+          </Link>
+        </div>
+        {pendingApprovals.length === 0 ? (
+          <p className="text-gray-500 text-center py-6">No pending approvals.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Blood Group</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Component</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Needed</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Available</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {pendingApprovals.map((r) => {
+                  const remaining = Math.max(0, (r.units_required || 0) - (r.units_fulfilled || 0));
+                  const available = getAvailableUnits(r.blood_group, r.component);
+                  const canApprove = available >= remaining && remaining > 0;
+                  return (
+                    <tr key={r.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <span className="text-lg font-bold text-red-600">{r.blood_group}</span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{r.component}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{remaining}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{available}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          disabled={!canApprove || approving[r.id]}
+                          onClick={() => approveRequest(r.id)}
+                          className={`px-4 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap ${
+                            canApprove
+                              ? "bg-green-600 text-white hover:bg-green-700"
+                              : "bg-gray-200 text-gray-600 cursor-not-allowed"
+                          } ${approving[r.id] ? "opacity-70" : ""}`}
+                        >
+                          {approving[r.id] ? "Approving..." : canApprove ? "Approve" : "Insufficient"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* Recent Requests */}
       <div className="bg-white rounded-xl shadow-lg p-6">
         <div className="flex justify-between items-center mb-4">
@@ -152,7 +244,7 @@ const Dashboard = () => {
             View All History →
           </Link>
         </div>
-        {requests.length === 0 ? (
+        {recentRequests.length === 0 ? (
           <p className="text-gray-500 text-center py-8">No requests yet.</p>
         ) : (
           <div className="overflow-x-auto">
@@ -168,7 +260,7 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {requests.map((request) => (
+                {recentRequests.map((request) => (
                   <tr key={request.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <span className="text-lg font-bold text-red-600">{request.blood_group}</span>
